@@ -1,0 +1,1039 @@
+<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>Steam2003 Maniacs</title><meta http-equiv="Content-Script-Type" content="text/javascript"><meta http-equiv="Content-Style-Type" content="text/css"><meta http-equiv="Content-Script-Type" content="text/javascript"></head><body onload="myInit()"><script>const myMenuItem = () => {
+    return { name: 'qwe', desc: 'rty', children: [], id: -1 };
+}
+
+const mainMenuSym = ':';
+const subMenuSym = '@';
+
+
+class MySource {
+
+    constructor(str) {
+        this.src = str
+            .replace(/\r\n/, '\n')
+            .split(/\n/);
+//            .map(x => x.trim())
+//            .filter(x => x != '');
+
+        this.idx = 0;
+        this.currentId = 0;
+    }
+
+    pop() {
+        var res = this.peek();
+        this.idx++
+        return res;
+    }
+
+    popEx() {
+        var idx = this.src.slice(this.idx).findIndex(x => x != '');
+
+        if (idx < 0) {
+            this.idx = this.src.length;
+            return '';
+        }
+
+        this.idx += idx;
+
+        return this.src[this.idx++];
+    }
+
+    peek() {
+        return this.atEnd() ? '' : this.src[this.idx];
+    }
+
+    peekEx() {
+        var res = this.src.slice(this.idx).find(x => x != '');
+
+        return res == undefined ? '' : res;
+    }
+
+    atEnd() {
+        return this.idx >= this.src.length;
+    }
+
+    parse() {
+        var res = [];
+
+        while (!this.atEnd()) {
+            switch (this.popEx()) {
+                case mainMenuSym:
+                    res.push(this.parseMainMenu());
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return res;
+    }
+
+    parseMainMenu() {
+        var res = myMenuItem();
+
+        res.name = this.parseName();
+
+        if (!MySource.isSubMenu(this.peekEx())) {
+            res.desc = this.parseDesc();
+            res.id = this.allocId();
+        }
+
+        else
+            res.children = this.parseSubMenu();
+
+        return res;
+    }
+
+    parseSubMenu() {
+        var res = [];
+
+        while (!this.atEnd() && MySource.isSubMenu(this.peekEx())) {
+            this.popEx();
+
+            var menu = myMenuItem();
+            menu.name = this.parseName();
+            menu.desc = this.parseDesc();
+            menu.id = this.allocId();
+
+            res.push(menu);
+        }
+
+        return res;
+    }
+
+    parseName() {
+        return this.popEx().trim();
+    }
+
+    parseDesc() {
+        var res = '';
+
+        if (!this.atEnd() && !MySource.isMainMenu(this.peekEx()) && !MySource.isSubMenu(this.peekEx())) {
+            res = `${this.popEx()}\n`;
+        }
+
+        while (!this.atEnd() && !MySource.isMainMenu(this.peek()) && !MySource.isSubMenu(this.peek())) {
+            res += `${this.pop()}\n`;
+        }
+
+        return res;
+    }
+
+    allocId() {
+        return this.currentId++;
+    }
+
+    static isMainMenu(s) {
+        return s.trim() == mainMenuSym;
+    }
+
+    static isSubMenu(s) {
+        return s.trim() == subMenuSym;
+    }
+
+
+}
+
+
+
+const myTag = (name, body, opt) => {
+    if (opt == undefined)
+        return `<${name}>${body}</${name}>`;
+
+    return `<${name} ${opt}>${body}</${name}>`;
+};
+
+
+const myElem = (name, value) => {
+    return `${name}="${value}"`;
+};
+
+const myNavigate = (name) => {
+    return undefined;
+};
+
+
+
+const myDynLink = (name, id) => {
+    var opt1 = myElem('href', `javascript:myNavigate('${name}')`);
+    var opt2 = myElem('onclick', `myJump(${id})`);
+    var res = myTag('a', name, `${opt1} ${opt2}`);
+
+    return res;
+}
+
+
+class MyMenuItem {
+
+    constructor(obj) {
+        this.name = obj.name;
+        this.id = obj.id;
+    }
+
+    tos() {
+        var val = myDynLink(this.name, this.id);
+        var res = myTag('li', val);
+        return res;
+    }
+
+}
+
+class MyDetails extends MyMenuItem {
+    constructor(obj) {
+        super(obj);
+        this.children = obj.children.map(x => new MyMenuItem(x));
+        this.isOpen = false;
+    }
+
+    tos() {
+        var opt = this.isOpen ? 'open' : undefined;
+        var sum = myTag('summary', this.name);
+        var nested = myTag('ul', this.children.map(x => x.tos()).join(''));
+        var res = myTag('details', `${sum}${nested}`, opt);
+
+        return res;
+    }
+}
+
+class MyPanel {
+
+    constructor(name, items) {
+        this.name = name;
+        this.items = items;
+    }
+
+    tos() {
+        var name = myElem('id', this.name);
+        var body = this.items.map(x => x.tos()).join('');
+        var res = myTag('div', body, name);
+
+        return res;
+    }
+
+}
+
+const myMenuId = 'myMenu';
+const myViewId = 'myView';
+
+const myFromId = (id) => {
+    return document.getElementById(id);
+};
+
+const myFromTag = (tag) => {
+    return document.getElementsByTagName(tag);
+};
+
+const myMenu = () => {
+    return myFromId(myMenuId);
+}
+
+const myView = () => {
+    return myFromId(myViewId);
+}
+
+var myDict = {};
+
+
+const myMoldDesc = (str) => {
+    var res =
+        str
+            .replace(
+                /\n{0,1}\~\[.*?\]\n?/g, '<hr>')
+            .replace(/\n/g, '<br>')
+            .replace(/ /g, '&nbsp;')
+            .replace(
+                /\&\[(.+?)\,\s*(.+?)\]/g,
+                (match, txt, url) =>
+                    myTag('a', txt, `${myElem('href', url)} ${myElem('target', '_blank')} ${myElem('rel', 'noopener noreferrer')}`));
+
+    return res;
+};
+
+
+const myCreateMenuItem = (obj) => {
+    if (obj.children.length > 0)
+        return new MyDetails(obj)
+
+    return new MyMenuItem(obj)
+};
+
+
+const myResize = () => {
+    var w = window.innerWidth - 30;
+    var h = window.innerHeight - 30;
+    var menu = myMenu().style;
+    var view = myView().style;
+
+    var w1 = (w * 25 / 100) | 0;
+    var w2 = w - w1 - 15;
+
+    menu.left = '5px';
+    menu.top = '5px';
+    menu.width = `${w1}px`;
+    menu.height = `${h}px`;
+
+    view.left = `${w1+10}px`;
+    view.top = menu.top;
+    view.width = `${w2}px`;
+    view.height = menu.height;
+};
+
+const myMenuToFlatArray = (src, dst) => {
+    for (var obj of src) {
+        if (obj.children.length > 0)
+            myMenuToFlatArray(obj.children, dst);
+
+        else
+            dst[obj.id] = obj.desc;
+    }
+
+}
+
+const myInit = () => {
+    var arr = new MySource(`:
+トップ
+ここは Steam版 RPG Maker 2003 のユーザー拡張パッチの1つである、
+マニアクス(Maniac Patch)をあつかうサイトです。
+
+
+~[]
+●利用条件
+
+パッチ全般の条件として &[Patch EULA,http://steamcommunity.com/app/362870/discussions/0/541906348059148217/] に同意する必要があります。
+マニアクス固有の条件としては自己責任での使用という点に同意する必要があります。
+
+
+~[]
+●最新版
+
+&[patch_maniacs_190630,https://ux.getuploader.com/xingqier/download/151](uploader.jp)
+
+「文字列ピクチャの表示」コマンドでフォントサイズが極端に小さいまたは画像サイズが極端に大きい場合にエラーが出ていたのを修正
+並列処理されるコモンイベントで「ウェイト」コマンドでの指定時間2.0秒を超えるとき正しく設定されていなかったのを修正
+コマンドビューのフォント変更機能を追加
+詳細は「更新履歴」参照
+
+バグ等を見つけたら作者に報告していただけると助かります。
+
+
+~[]
+●次回予定
+
+「キー入力の処理EX」「マップの書き換え」「共有セーブの操作」コマンドを新規追加
+ゲーム画面の表示色をハイカラーからトゥルーカラーに変更
+
+
+~[]
+●次々回予定
+
+「非アクティブの動作設定」コマンドを新規追加
+戦闘アニメの拡張
+変数操作拡張
+文字列変数の一部実装
+素材指定でサブフォルダ対応
+
+
+~[]
+●使い方がわからないときは
+
+&[解説ページ,https://wikiwiki.jp/viprpg-dev/2003/%E6%8B%A1%E5%BC%B5%E3%83%91%E3%83%83%E3%83%81](VIPRPG@総合制作技術Wiki)が参考になるかもしれません。
+
+:
+ダウンロード
+
+新しい順に掲載しています。
+
+
+~[]
+&[patch_maniacs_190630,https://ux.getuploader.com/xingqier/download/151](uploader.jp)
+&[patch_maniacs_190625,https://ux.getuploader.com/xingqier/download/150](uploader.jp)
+&[patch_maniacs_190526,https://ux.getuploader.com/xingqier/download/147](uploader.jp)
+&[patch_maniacs_190220,https://ux.getuploader.com/xingqier/download/140](uploader.jp)
+&[patch_maniacs_190217,https://ux.getuploader.com/xingqier/download/137](uploader.jp)
+&[patch_maniacs_190122,https://ux.getuploader.com/xingqier/download/136](uploader.jp)
+&[patch_maniacs_190121,https://ux.getuploader.com/xingqier/download/134](uploader.jp)
+&[patch_maniacs_190120,https://ux.getuploader.com/xingqier/download/133](uploader.jp)
+&[patch_maniacs_190119,https://ux.getuploader.com/xingqier/download/132](uploader.jp)
+&[patch_maniacs_190118,https://ux.getuploader.com/xingqier/download/130](uploader.jp)
+&[patch_maniacs_181209,https://ux.getuploader.com/xingqier/download/127](uploader.jp)
+&[patch_maniacs_180809,https://ux.getuploader.com/xingqier/download/113](uploader.jp)
+
+
+:
+im版とpf版
+拡張パッチの適用に際して挙動の違う2種類の実行ファイルを選択できます。
+主な違いはマップイベントの出現条件をチェックするタイミングです。
+どちらを選択すべきかわからないときはim版を選んでください。
+
+
+~[]
+●im版
+
+付属のユーティリティツールでは「出現条件の変更直後（標準）/ Immediately (Default)」
+の項目で表されています。
+標準とある通り、従来のツクール200Xと同様に変数やスイッチの値が変更されるたびに
+現在のマップにある全てのイベントの出現条件をチェックします。
+互換性を重視したバージョンです。
+    
+    
+~[]
+●pf版
+
+付属のユーティリティツールでは「毎フレーム（一部の挙動に互換性なし）/ Per frame (Incompatible)」
+の項目で表されています。
+現在のマップにある全てのイベントの出現条件を1フレームに1度だけチェックします。
+これにより変数操作等のコストが大幅に下がるため、複雑な自作システムを組む際には
+大きなメリットになります。
+ただし、イベントページ切り替えの動作には注意してください
+（多くの場合でイベント末尾にウェイト0.0をおくと問題が解決します）。
+また、19/05/26よりイベントあたりの1フレームに実行可能なコマンド数上限が標準の1万から20万に
+引き上げられています。
+    
+
+:
+追加機能
+●エディタ&ゲームエンジン
+
+・有効な値の範囲が -9999999～9999999 から -2147483648～2147483647 に変更
+    ※符号付き4バイト整数　従来通りオーバーフロー/アンダーフローはありません。
+    
+・コモンイベントの発動条件に「戦闘開始」「戦闘中に並列処理」を追加
+
+    「戦闘開始」は条件0ターンのバトルイベントより先に1度だけ呼び出されます。
+    「戦闘開始」のイベント中でウェイトのかかるコマンドを使うべきではありません(処理の中断と同義です)。
+
+・敵キャラデータで攻撃時の戦闘アニメ指定
+    ※戦闘アニメ指定機能のないエディタで編集するとこの項目のデータが保存されず初期値(1)になるため注意してください。
+ 
+・ogg/vorbisの再生
+    VX以降の独自規格であるLOOPSTART、LOOPLENGTHタグも有効です。
+    BGMはストリーミング、SEは一括読み込みでwavにしてキャッシュします。
+    特定エンコードのファイルでシークがうまくいかずループ再生できない問題があります。
+    （現時点で魔王魂さんのところの素材でのみ確認。&[FOLE,http://ficusel.com/]を通すと再生できるようになります。）
+    
+
+~[]
+●エディタ
+
+・コマンドリストの有効箇所を拡大
+    コモンイベントとバトルイベントとの間で、それぞれが通常扱えないコマンドを生成/編集/貼り付け/可能になりました。
+    生成は右クリックメニューの「挿入Ex」またはShift+Enterでおこないます。
+
+・コマンドリストの編集
+    右クリックメニューにコマンドリストの編集が追加されており、並びや行数/列数などをあるていど変更可能です。
+
+・プロジェクトデータのバックアップ
+    「(ゲームプロジェクトフォルダ)\Backup」フォルダにデータのバックアップをzipで出力します。
+    最小では「ldb, lmt, lmu」を、全ファイルではBackupフォルダ以下を除く全てのフォルダおよびファイルを同梱します。
+    ファイル名は「YYYY_MMDD_HHMM_SS.zip」です。
+    
+・フォント変更
+    「rpg2003.exe」と同じディレクトリに「rpg2003.ini」を作成することで設定可能です。
+    19/06/30現在はコマンドビューのみ対応しています。
+    実行中の変更は適用されず、再起動後に有効になります。
+    セクション名は「rpg2003」、
+    フォント名のキーは「FontName」、
+    フォントサイズのキーは「FontSize」です。
+    日本語版のデフォルトは以下の設定です。
+    
+    [rpg2003]
+    FontName=MS UI Gothic
+    FontSize=9
+    
+・キャラの向きの確認
+    「キャラクターの動作指定」コマンドでグラフィック変更の際、向きやパターンごとの画像を確認できるようにしました。
+
+
+    
+~[]
+●ゲームエンジン
+
+・マウス操作
+    マウスクリックで文章を送れるようになりました。
+    選択肢にも対応しています（右クリックでキャンセル）。
+
+・フォント読み込み
+    プロジェクトフォルダに「Font」というフォルダを作り、その中にttfファイルを置くと
+    起動時にフォントが読み込まれます（フォントは文字列ピクチャで使用できます）。
+
+・アプリケーションのロケール（日本語版のみ）
+    OSの言語設定にかかわらず日本語文字を文字化けさせずに表示可能です。
+    
+・デフォ戦で精神/敏捷のバフデバフを正常化
+    倍増と半減を同時にかけても正しく動作するように変更しました。
+    
+・デフォ戦のダメージ上限突破
+    変数の上限と同様です。
+    
+・処理の高速化
+    コマンド実行全般、ピクチャの描画、イベント呼び出し、変数操作等
+    多くの面で処理を高速化しました。
+    
+:
+追加コマンド
+@
+セーブ情報の取得
+●セーブ情報の取得 / Get Save Info
+
+デフォルトのロード画面に表示される内容と同じ情報を取得するコマンドです。
+日時・レベル・HPを変数に、フェイスグラフィックをピクチャに格納します。
+キャラ名には現在対応していません。
+
+セーブデータが存在しない場合は日付用の変数に0が格納されます。
+
+フェイスグラフィックは4*4のスプライトシートとして扱われます。
+そのため、16以上のパターンを並べているようなファイルだと表示がずれます。
+逆に4分割できさえすれば規格から外れていても問題ありません。
+
+ピクチャはファイルとスプライトシート関連の項目を除き、もとの設定をそのまま使用します。
+対象のピクチャ番号で事前に画面外に出すか透明にするなどしてお使いください。
+
+英語版でも年月日(YYMMDD)の順序は同じです。
+
+@
+セーブの実行
+●セーブの実行 / Save
+
+デフォルトのセーブ機能と同等の処理をおこなうコマンドです。
+セーブ番号0以下は使用できません。
+
+オプションで実行結果を変数に格納することができます。
+値は成功時は1、失敗すると0になります。
+変数への代入はセーブを実行してからなされるため注意が必要です。
+    
+@ 
+ロードの実行
+●ロードの実行 / Load
+
+デフォルトのロード機能と同等の処理をおこなうコマンドです。
+セーブ番号0以下は使用できません(操作は無視されます)。
+
+オプションとして実行前にファイルをチェックし、結果が不正な場合はロードを中断する機能があります。
+チェックは「セーブ情報の取得」コマンド相当の処理を行います。
+確実に正しいファイルが存在する場合には無効にしても構いませんがおすすめしません。 
+    
+@
+ロード処理の終了
+●ロード処理の終了 / End Load Process
+
+現在このコマンドは意味を持ちません。
+    
+@
+マウス座標の取得
+●マウス座標の取得 / Get Mouse Position
+
+ウィンドウ内でのマウスの位置を取得するコマンドです。
+320*240の解像度を基準にします。
+
+※フルスクリーン状態かつレンダリング方法にDirectDrawが指定されているときに値を正しく扱えません。
+（この設定が有効なマシンは現状殆どないためおそらく問題ありません。）
+
+@
+マウス座標の設定
+●マウス座標の設定 / Set Mouse Position
+
+ウィンドウ内でのマウスの位置を設定するコマンドです。
+320*240の解像度を基準にします。
+誤クリック誘発を避けるため、X座標は0~319、Y座標は0~239の範囲に丸められます。
+
+※フルスクリーン状態かつレンダリング方法にDirectDrawが指定されているときに値を正しく扱えません。
+（この設定が有効なマシンは現状殆どないためおそらく問題ありません。）
+
+@
+文字列ピクチャの表示
+●文字列ピクチャの表示 / Show String Picture
+
+指定した文字列からピクチャを生成します。
+生成後は通常のピクチャと同様に扱うことができます。
+背景、枠、グラデーション、影は無効にすると生成コストが軽減されます。
+詳細はパッチ付属のテキストを参照してください。
+
+@
+ピクチャ情報の取得
+●ピクチャ情報の取得 / Get Picture Info
+
+表示中のピクチャの位置やサイズを取得するコマンドです。
+回転等の特殊効果は反映されません。
+
+@
+戦闘処理の制御
+●戦闘処理の制御 / Control Battle
+
+デフォ戦の処理のうちいくつかをユーザーが操作できるようにするコマンドです。
+このコマンドは戦闘中の使用のみ有効で、戦闘終了後に解除(全ての制御がなし)されます。
+戦闘開始を条件としたコモンイベントとあわせてご利用ください。
+現在は以下の5種類の処理を選択できます。
+
+ATBゲージ増加
+ダメージポップ
+ターゲッティング
+状態付与
+ダメージ以外の値変動
+
+
+@
+ATBゲージの操作
+●ATBゲージの操作 / Control ATB Gauge
+
+敵味方含むキャラクターのゲージを操作するコマンドです。
+ゲージは0~300000が有効な範囲です。
+    
+@
+戦闘コマンドの変更EX
+●戦闘コマンドの変更EX / Change Battle Commmadn EX
+
+戦闘コマンドの隊列変更の項目を有効/無効化およびパーティコマンドを編集するコマンドです。
+このコマンドは戦闘中の使用のみ有効で、戦闘終了後にデフォルトの設定に戻ります。
+戦闘開始を条件としたコモンイベントとあわせてご利用ください。
+    
+@
+戦闘情報の取得
+●戦闘情報の取得 / Get Battle Info
+
+戦闘中にあらわれるさまざまな値を取得します。
+非戦闘時には何も実行しません。
+    
+@
+変数配列の操作
+●変数配列の操作 / Control Var Array
+
+連続した番号の変数を配列とみなして各種操作をおこないます。
+配列の長さを1にすることで単体操作も可能です。
+
+・コピー
+    対象1から対象2へ値をコピーします。
+
+・交換
+    対象1と対象2の内容を入れ替えます。
+
+・ソート(昇順)
+・ソート(降順)
+    対象1を昇順/降順で並べ替えます。
+
+・シャッフル
+    対象1をランダムに並べ替えます。
+
+・列挙
+    対象1に初期値から1ずつ加算しながらサイズ分の値を格納します。
+
+・その他
+    変数の操作コマンドと同様です。違いはオペランドも配列である点です。
+
+:
+変更コマンド
+
+@
+ピクチャ表示
+●ピクチャ表示 / Show Picture
+
+特殊効果として角度指定を追加しました。
+ブレンドモード(乗算、加算、オーバーレイ)を追加しました。
+水平/垂直方向の反転機能を追加しました。
+
+
+@
+ピクチャ移動
+●ピクチャ移動 / Move Picture
+
+特殊効果として角度指定を追加しました。
+ブレンドモード(乗算、加算、オーバーレイ)を追加しました。
+移動時間をマイナスの値で指定したとき、その絶対値をフレーム単位で扱うようにしました。
+（通常は指定値*6フレーム）
+  
+  
+  
+@
+条件分岐
+●条件分岐 / Conditional Branch
+
+ロード直後かどうかの判定を追加しました。
+スイッチに変数参照での指定方法を追加しました。
+変数の左辺値に変数番号の変数で指定する方法を追加しました。
+変数の右辺値に変数番号の変数で指定する方法を追加しました。
+    
+
+@
+キー入力の処理
+●キー入力の処理 / Key Input Processing
+
+マウス(左右中央クリック、ホイール上下スクロール)の入力に対応しました。
+ホイールスクロールは押し下げ状態がないため「押されるまで待つ」の条件でのみ有効です。
+
+    
+    
+    
+@
+変数の操作
+●変数の操作 / Control Variables
+
+操作対象に変数値での範囲指定を追加しました。
+一括の操作で a > b だったとき b~a として扱うようになりました。
+操作内容に論理和(or)、論理積(and)、排他的論理和(xor)、論理左右シフト(shl, shr)を追加しました。
+オペランドの主人公と敵キャラそれぞれにID、ATBゲージの項目を追加しました。
+オペランドのその他に現在の日付、時刻、経過フレームの項目を追加しました。
+オペランドにスイッチを追加しました。ONは1、OFFは0として扱われます。
+オペランドのアイテム、主人公、イベント、敵キャラのそれぞれに変数での指定方法を追加しました。
+オペランドにパーティメンバーを追加しました。パーティ内インデックスで指定する以外は主人公と同様です。
+オペランドに数学系の関数を追加しました。
+    以下の説明では引数1をa、引数2をb、乗数をcとしています。
+    
+    Add, Sub, Mul, Div, Mod, Or, And, Xor, Shl, Shr:
+            a (演算子) bで「操作内容」と同じ演算をおこないます。
+    
+    Pow:    aのb乗を計算します。
+    Sqrt:   aの平方根 * cを計算します。小数点以下は切り捨てられます。
+    Sin:    (a / b)度の正弦 * cを計算します。小数点以下は切り捨てられます。
+    Cos:    (a / b)度の余弦 * cを計算します。小数点以下は切り捨てられます。
+    Atan2:  a(Y座標), b(X座標)の逆正接 * cを計算します。小数点以下は切り捨てられます。
+    Min:    a, bのうち小さいほうの値を返します。
+    Max:    a, bのうち大きいほうの値を返します。
+    Abs:    aの絶対値を返します。
+    Random: a~bの範囲の乱数を返します。オペランドの「乱数」と同様です。
+    
+オペランドに三項演算を追加しました。
+
+    
+@
+イベントの呼び出し
+●イベントの呼び出し / Call Event
+
+コモンイベントに変数で指定する方法を追加しました。
+コモンイベントに変数番号の変数で指定する方法を追加しました。
+    
+    
+    
+@
+繰り返し処理
+●繰り返し処理 / Loop
+
+条件を指定できるようにしました。スイッチはONが1、OFFが0の数値として扱われます。
+ラベルジャンプによってループ内部に侵入した場合は繰り返し回数やインデックスが正しく設定されません。
+
+・∞ / Infinity
+    従来の無限ループです。
+    
+・回数指定 / X Times
+    指定回数だけ繰り返します。オプションで0から始まるインデックスを変数に出力できます。
+    
+・カウントアップ / Count Up
+    aからbまでの範囲でインデックスを1ずつ加算しながら繰り返します。
+    例として2~5とした場合は2, 3, 4, 5の4回ループになります。
+    オプションで現在のインデックスを変数に出力できます。
+    
+・カウントダウン / Count Down
+    aからbまでの範囲でインデックスを1ずつ減算しながら繰り返します。
+    例として3~1とした場合は3, 2, 1の3回ループになります。
+    オプションで現在のインデックスを変数に出力できます。
+
+・While / While
+    条件が真のあいだ繰り返します。毎ループの実行前に判定されます。
+    比較は変数による条件分岐と同様の指定が可能です。
+    オプションで0から始まるインデックスを変数に出力できます。        
+    
+・Do While / Do While
+    条件が真のあいだ繰り返します。毎ループの実行後に判定されます。
+    比較は変数による条件分岐と同様の指定が可能です。
+    オプションで0から始まるインデックスを変数に出力できます。
+
+@
+繰り返し処理の中断
+●繰り返し処理の中断 / Break Loop
+
+「繰り返し処理」コマンドの変更にともない同様の処理を追加しました。
+多重ループの内部で実行したときの挙動を修正しました。
+    
+    
+    
+@
+戦闘の処理
+●戦闘の処理 / Battle Processing
+
+戦闘開始前のフラッシュを無効化するオプションを追加しました。
+    
+    
+    
+
+    
+:
+更新履歴
+●2019/??/??
+
+[修正]
+・ゲームエンジン：
+    「変数配列の操作」コマンドで特定条件でエラーが出ていたのを修正
+    「繰り返し処理」コマンドが並列処理で使用されているときなどにセーブをおこなうとまれにエラーが出ていたのを修正
+    「文字列ピクチャの表示」コマンドで色調を変更した場合に適用が1フレーム遅れていたのを修正
+    
+[追加変更]
+・ゲームエンジン：
+    oggファイルの再生時に高負荷などを原因とした空回りが発生しないように変更
+    セーブ時にエラーが発生した場合にファイルへの書き込みをしないように変更
+    フォントの自動読み込みでオープンタイプ(.otf)のフォントに対応
+    「無効な主人公が指定されました」等のメッセージにIDや番号を付加
+    画面に表示可能な色数をハイカラー(65536色)からトゥルーカラー(16777216色)に変更
+    処理全般の高速化
+
+・エディタ：
+    マップサイズの縦横いずれかが通常の下限値(20x15)を下回るとき自動生成機能を外すように変更
+    
+・エディタ&ゲームエンジン：
+    「キー入力の処理EX」コマンドを追加
+    「マップの書き換え」コマンドを追加
+    「共有セーブの操作」コマンドを追加
+    「変数の操作」コマンドのオペランドに三項演算を追加
+    使用可能なフォントの種類を日本語版・英語版で共通になるように変更
+    データベースの状態で1番目のデータも編集できるように変更
+    データベースの状態に「対象の行動のみターンに数える」オプションを追加
+    
+
+
+~[]
+●2019/06/30
+
+[修正]
+・エディタ&ゲームエンジン：
+    「文字列ピクチャの表示」コマンドでフォントサイズが極端に小さいまたは画像サイズが極端に大きい場合にエラーが出ていたのを修正
+    
+・エディタ：
+    日本語版の「イベントの呼び出し」コマンドで「このイベント」が'This Event'のままだったのを修正
+    
+・ゲームエンジン：
+    並列処理されるコモンイベントで「ウェイト」コマンドでの指定時間2.0秒を超えるとき正しく設定されていなかったのを修正
+
+[追加変更]
+・エディタ：
+    コマンドビューのフォント変更機能を追加
+    「繰り返し処理」コマンドでインデックスを受け取る変数を表示するように変更
+    マップサイズの下限を1*1に変更
+    「プロジェクトを開く」のフォームサイズを変更
+    
+    
+
+~[]
+●2019/06/25
+
+[修正]
+・ゲームエンジン：
+    「オプション画面の呼び出し」コマンド経由で画面サイズを変更した際にマウス座標の倍率が再計算されていなかったのを修正
+    「戦闘処理の制御」コマンドでターゲティングの引数の値が間違っていたのを修正
+    「戦闘処理の制御」コマンドで呼び出されるイベント実行時に余計なフレーム経過がはさまれていたのを修正
+    「ピクチャ移動」コマンドで、スクロールに連動したピクチャを移動させたときの座標が正しくなかったのを修正
+    「変数の操作」コマンドで、変数番のスイッチで取得できる値が正しくなかったのを修正
+    デフォ戦で通常攻撃の対象が全体または味方側であった場合にエラーが出る問題を修正
+    
+[追加変更]
+・ゲームエンジン：
+    「ピクチャ表示」コマンドで引数が足りないときの消去条件および適用画面効果のデフォルトを変更（マップ移動で消去・フラッシュとシェイクの影響を受ける）
+    「変数の操作」コマンドのパフォーマンス改善
+    「条件分岐」コマンド等のブロックがスキップされる処理を軽量化
+    マップイベントの呼び出しを高速化
+
+    
+
+~[]
+●2019/05/26
+
+[修正]
+・エディタ&ゲームエンジン：
+    「accord.dll」がGoogle ドライブでウィルス判定を受ける問題を修正
+
+[追加変更]
+・ゲームエンジン：
+    コモンイベントの並列処理イベントの実行速度を改善
+    1コマンドあたりの実行コストを低減
+    ピクチャの回転描画の挙動を大幅改善
+    pf版のみイベントごとのフレーム内実行コマンド数上限を1万から20万に変更
+    フォントの読み込み機能を追加
+    
+・エディタ：
+    コマンドリストの編集機能を追加
+    「キャラクターの動作指定」コマンドでグラフィック変更の際、向きやパターンごとの画像を確認できるように変更
+    
+・エディタ&ゲームエンジン：
+    「戦闘情報の取得」コマンドを追加
+    「変数配列の操作」コマンドを追加
+    ピクチャの特殊効果に角度指定を追加
+    ピクチャの特殊効果とブレンドモードを分離（現時点では波形のみ併用不可）
+    「戦闘処理の制御」コマンドに項目「状態付与」「HP以外の能力値変動」を追加
+    「戦闘コマンドの変更EX」コマンドにパーティコマンド操作機能を追加
+    
+    
+
+~[]
+●2019/02/20
+
+[修正]
+・ゲームエンジン：
+    デフォ戦で戦闘タイプがBのとき、コマンド選択が正しく動作していなかったのを修正
+    デフォ戦で逃げられない設定の戦闘時に使用可能コマンドと不能なものの文字色が反転していたのを修正
+
+[変更]
+・ゲームエンジン：
+    デフォ戦で全ての戦闘コマンドを外したときの挙動を変更
+
+
+~[]
+●2019/02/17
+
+[修正]
+・ゲームエンジン：
+    変数操作のオペランドSin/Cosで、引数に0を指定したときエラーがでていたのを修正
+    「文字列ピクチャの表示」コマンドで影を有効にした上でサイズを自動算出すると縦横1pxずつ余分に大きかったのを修正
+
+・エディタ：
+    条件分岐のフォームで一部コントロールが重なっていたのを修正
+    「ピクチャの移動」コマンドフォームで画像反転を表すテキストが表示されていなかったのを修正
+
+
+[追加変更]
+・ゲームエンジン：
+    デフォ戦のダメージ上限を変数値の上限と同等に変更
+    精神/敏捷ステータスに倍増と半減の効果を重ねがけできるように変更
+
+・エディタ：
+    メインメニューに「バックアップ」を追加
+    条件分岐のフォームで左辺値「変数番のスイッチ」「変数番の変数」の並びを変更
+    コモンイベントとバトルイベントで異なるコマンドをペーストしたときの警告を非表示に変更
+    コモンイベントとバトルイベントで異なるコマンドを編集できるように変更
+    コモンイベントとバトルイベントで異なるコマンドリストを呼び出せるように変更
+    プログラムでエラーが発生したときにデータベースとマップデータの保存を中止するように変更
+    「特定環境で戦闘テストの起動に失敗する問題を修正するパッチ」の内容を内包
+    (&[https://rpgmaker.net/forums/topics/21525/?post=875459#post875459,https://rpgmaker.net/forums/topics/21525/?post=875459#post875459])
+    
+・エディタ&ゲームエンジン：
+    「ピクチャ情報の取得」コマンドを追加
+    「戦闘処理の制御」コマンドを追加
+    「ATBゲージの操作」コマンドを追加
+    「戦闘コマンドの変更EX」コマンドを追加    
+    「戦闘の処理」コマンドで戦闘開始前のフラッシュを無効化するオプションを追加
+    「変数操作」コマンドのオペランドSin/Cosに引数を1つ追加
+    敵キャラデータの項目に攻撃時の戦闘アニメを追加
+    コモンイベントの開始条件に「戦闘開始」を追加
+    コモンイベントの開始条件に「戦闘時に並列処理」を追加
+    
+    
+
+~[]
+●2019/01/22
+
+・ゲームエンジン：
+    生成した文字列ピクチャに対しピクチャの移動をおこなった後にセーブすると
+    ロード時にエラーが出ていたのを修正
+    (上記の条件に当てはまる190121版以前の文字列ピクチャはロード時に文字の描画をスキップするように変更、
+    190122以降で作成されたセーブデータは正常にセーブ/ロード可能)
+
+
+~[]
+●2019/01/21
+
+・エディタ：
+    文字列ピクチャで一覧表示による変数選択ができなくなっていたのを修正
+    
+・ゲームエンジン：
+    文字列ピクチャで特殊文字の描画がスキップされることがあったのを修正
+    
+    
+    
+~[]
+●2019/01/20
+
+・エディタ(日本語版)：
+    職業の変更コマンドの翻訳漏れを補完
+
+・ゲームエンジン：
+    条件分岐「セーブデータが存在する」で正しく判定されていなかったのを修正
+
+    
+
+~[]
+●2019/01/19
+
+・エディタ：
+    文字列ピクチャのプレビュー更新にショートカットキーを追加
+
+・ゲームエンジン：
+    終了時にエラーが出ていたのを修正
+
+
+
+~[]
+●2019/01/19
+
+・エディタ：
+    変数操作のフォームで定数範囲指定の上限が9999になっていたのを修正(→999999)
+    条件分岐で「n番の変数が***」を選択していると、編集操作を行っても新規作成と同様の値が設定されてしまう問題を修正
+
+・ゲームエンジン：
+    変数操作で主人公の現在経験値を取得しようとすると現在レベルが返っていたのを修正
+
+・エディタ・ゲームエンジン：
+    セキュリティソフトによる誤検知対策に追加セクションの配置を変更
+    文字列ピクチャの表示コマンドを追加
+
+
+    
+~[]
+●2018/12/09
+
+    ピクチャの波形描画が無効になっていたのを修正
+    マップイベント更新のタイミングを変更しないバージョンを追加
+    コモンイベントの呼び出しを高速化
+    OSの言語設定が日本語以外の状態で日本語版を使用したとき文字化けするのを修正        
+    変数の操作、条件分岐、イベントの呼び出し、繰り返し処理、繰り返し処理の中断コマンドそれぞれの機能を追加修正
+    
+
+
+~[]
+●2018/08/09
+
+    動作テスト版公開
+
+
+:
+作者
+氷山羊
+mail: bingshanyang at gmail dot com
+twitter: &[@BingShan1024,https://twitter.com/BingShan1024]
+
+:
+リンク
+&[Steam版 RPG Maker 2003 のストアページ,http://store.steampowered.com/app/362870/RPG_Maker_2003/]
+&[RPG Maker 2003 - Patch EULA (Steam),http://steamcommunity.com/app/362870/discussions/0/541906348059148217/]
+&[RPG Maker Web,http://www.rpgmakerweb.com/]
+&[英語版2003 RTP (RPG Maker Web),http://www.rpgmakerweb.com/download/additional/run-time-packages]
+&[VIPRPG@総合制作技術Wiki,https://wikiwiki.jp/viprpg-dev/]
+`).parse();
+
+    myMenuToFlatArray(arr, myDict);
+
+
+    var items = arr.map(x => myCreateMenuItem(x));
+    var menu = new MyPanel(myMenuId, items);
+    var view = new MyPanel(myViewId, []);
+
+    document.body.innerHTML = `${menu.tos()}${view.tos()}`;
+    window.onresize = myResize;
+
+
+    [myMenu(), myView()].forEach(x => {
+        x.style.border = 'thin solid gray';
+        x.style.float = 'left';
+        x.style.display = 'inline-block';
+        x.style['white-space'] = 'nowrap';
+        x.style.overflow = 'scroll';
+    });
+
+
+    myResize();
+    myJump(0);
+
+};
+
+const myJump = (id) => {
+    myView().innerHTML = myMoldDesc(myDict[id]);
+    myView().scrollTop = 0;
+    myView().scrollLeft = 0;
+}
+
+</script></body></html>
