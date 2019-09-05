@@ -253,9 +253,9 @@ const myMoldDesc = (str) => {
 
 const myCreateMenuItem = (obj) => {
     if (obj.children.length > 0)
-        return new MyDetails(obj)
+        return new MyDetails(obj);
 
-    return new MyMenuItem(obj)
+    return new MyMenuItem(obj);
 };
 
 
@@ -321,13 +321,6 @@ const myInit = () => {
 ~[]
 ●次回予定
 
-「キー入力の処理EX」「マップの書き換え」「共有セーブの操作」コマンドを新規追加
-ゲーム画面の表示色をハイカラーからトゥルーカラーに変更
-
-
-~[]
-●次々回予定
-
 「非アクティブの動作設定」コマンドを新規追加
 戦闘アニメの拡張
 変数操作拡張
@@ -339,6 +332,16 @@ const myInit = () => {
 ●使い方がわからないときは
 
 &[解説ページ,https://wikiwiki.jp/viprpg-dev/2003/%E6%8B%A1%E5%BC%B5%E3%83%91%E3%83%83%E3%83%81](VIPRPG@総合制作技術Wiki)が参考になるかもしれません。
+
+
+~[]
+●&[掲示板,https://jbbs.shitaraba.net/game/60858/](したらば)
+
+念のため用意しておきました。
+バグ報告や要望等はこちらからもどうぞ。
+
+
+
 
 :
 ダウンロード
@@ -1082,6 +1085,9 @@ twitter: &[@BingShan1024,https://twitter.com/BingShan1024]
 &[RPG Maker Web,http://www.rpgmakerweb.com/]
 &[英語版2003 RTP (RPG Maker Web),http://www.rpgmakerweb.com/download/additional/run-time-packages]
 &[VIPRPG@総合制作技術Wiki,https://wikiwiki.jp/viprpg-dev/]
+
+
+
 `).parse();
 
     myMenuToFlatArray(arr, myDict);
