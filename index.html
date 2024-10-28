@@ -1,3 +1,4 @@
+
 <!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>Steam2003 Maniacs</title><meta http-equiv="Content-Script-Type" content="text/javascript"><meta http-equiv="Content-Style-Type" content="text/css"><meta http-equiv="Content-Script-Type" content="text/javascript"></head><body onload="myInit()"><script>const myMenuItem = () => {
     return { name: 'qwe', desc: 'rty', children: [], id: -1 };
 }
@@ -24,27 +25,27 @@ class MySource {
         this.idx++
         return res;
     }
-
+    
     popEx() {
         var idx = this.src.slice(this.idx).findIndex(x => x != '');
-
+        
         if (idx < 0) {
             this.idx = this.src.length;
             return '';
         }
-
+        
         this.idx += idx;
-
+        
         return this.src[this.idx++];
     }
 
     peek() {
         return this.atEnd() ? '' : this.src[this.idx];
     }
-
+    
     peekEx() {
         var res = this.src.slice(this.idx).find(x => x != '');
-
+        
         return res == undefined ? '' : res;
     }
 
@@ -55,15 +56,15 @@ class MySource {
     parse() {
         var res = [];
 
-        while (!this.atEnd()) {
+        while (!this.atEnd()) {            
             switch (this.popEx()) {
                 case mainMenuSym:
-                    res.push(this.parseMainMenu());
+                    res.push(this.parseMainMenu());    
                     break;
-
+                    
                 default:
                     break;
-            }
+            }        
         }
 
         return res;
@@ -87,7 +88,7 @@ class MySource {
 
     parseSubMenu() {
         var res = [];
-
+        
         while (!this.atEnd() && MySource.isSubMenu(this.peekEx())) {
             this.popEx();
 
@@ -105,7 +106,7 @@ class MySource {
     parseName() {
         return this.popEx().trim();
     }
-
+        
     parseDesc() {
         var res = '';
 
@@ -116,31 +117,28 @@ class MySource {
         while (!this.atEnd() && !MySource.isMainMenu(this.peek()) && !MySource.isSubMenu(this.peek())) {
             res += `${this.pop()}\n`;
         }
-
+        
         return res;
     }
-
+    
     allocId() {
         return this.currentId++;
     }
-
-    static isMainMenu(s) {
+    
+    static isMainMenu(s) { 
         return s.trim() == mainMenuSym;
     }
-
-    static isSubMenu(s) {
+    
+    static isSubMenu(s) { 
         return s.trim() == subMenuSym;
     }
-
-
+    
+    
 }
-
-
-
 const myTag = (name, body, opt) => {
     if (opt == undefined)
         return `<${name}>${body}</${name}>`;
-
+        
     return `<${name} ${opt}>${body}</${name}>`;
 };
 
@@ -165,18 +163,18 @@ const myDynLink = (name, id) => {
 
 
 class MyMenuItem {
-
+    
     constructor(obj) {
         this.name = obj.name;
         this.id = obj.id;
     }
-
+    
     tos() {
         var val = myDynLink(this.name, this.id);
         var res = myTag('li', val);
         return res;
     }
-
+    
 }
 
 class MyDetails extends MyMenuItem {
@@ -185,32 +183,32 @@ class MyDetails extends MyMenuItem {
         this.children = obj.children.map(x => new MyMenuItem(x));
         this.isOpen = false;
     }
-
+    
     tos() {
         var opt = this.isOpen ? 'open' : undefined;
         var sum = myTag('summary', this.name);
         var nested = myTag('ul', this.children.map(x => x.tos()).join(''));
         var res = myTag('details', `${sum}${nested}`, opt);
-
+        
         return res;
     }
 }
 
 class MyPanel {
-
+    
     constructor(name, items) {
         this.name = name;
         this.items = items;
     }
-
+    
     tos() {
         var name = myElem('id', this.name);
         var body = this.items.map(x => x.tos()).join('');
         var res = myTag('div', body, name);
-
+        
         return res;
     }
-
+    
 }
 
 const myMenuId = 'myMenu';
@@ -236,25 +234,25 @@ var myDict = {};
 
 
 const myMoldDesc = (str) => {
-    var res =
+    var res = 
         str
             .replace(
                 /\n{0,1}\~\[.*?\]\n?/g, '<hr>')
             .replace(/\n/g, '<br>')
             .replace(/ /g, '&nbsp;')
             .replace(
-                /\&\[(.+?)\,\s*(.+?)\]/g,
+                /\&\[(.+?)\,\s*(.+?)\]/g, 
                 (match, txt, url) =>
                     myTag('a', txt, `${myElem('href', url)} ${myElem('target', '_blank')} ${myElem('rel', 'noopener noreferrer')}`));
-
+    
     return res;
 };
 
 
 const myCreateMenuItem = (obj) => {
-    if (obj.children.length > 0)
+    if (obj.children.length > 0) 
         return new MyDetails(obj);
-
+    
     return new MyMenuItem(obj);
 };
 
@@ -264,297 +262,139 @@ const myResize = () => {
     var h = window.innerHeight - 30;
     var menu = myMenu().style;
     var view = myView().style;
-
+    
     var w1 = (w * 25 / 100) | 0;
     var w2 = w - w1 - 15;
-
+    
     menu.left = '5px';
     menu.top = '5px';
     menu.width = `${w1}px`;
     menu.height = `${h}px`;
-
+    
     view.left = `${w1+10}px`;
     view.top = menu.top;
     view.width = `${w2}px`;
     view.height = menu.height;
 };
 
+const myTrimComment = (str) => {
+    return str
+            .replace(
+                /\/\/(\{|\})\n?/g, '');    
+};
+
+
 const myMenuToFlatArray = (src, dst) => {
     for (var obj of src) {
         if (obj.children.length > 0)
             myMenuToFlatArray(obj.children, dst);
-
+        
         else
-            dst[obj.id] = obj.desc;
+            dst[obj.id] = myTrimComment(obj.desc);
     }
-
+    
 }
 
 const myInit = () => {
     var arr = new MySource(`:
 トップ
-ここは Steam版 RPG Maker 2003 のユーザー拡張パッチの1つである、
-マニアクス(Maniac Patch)をあつかうサイトです。
-
-
-~[]
-●利用条件
-
-パッチ全般の条件として &[Patch EULA,http://steamcommunity.com/app/362870/discussions/0/541906348059148217/] に同意する必要があります。
-マニアクス固有の条件としては自己責任での使用という点に同意する必要があります。
-
-
-~[]
-●お知らせ
-
-パッチへの同梱をやめていた「utility.exe」はリニューアルして再度入れました。
-
-ゲームエンジンの全更新が完了しました。
-リニューアルに際していくつか互換性のない部分も発生したためご注意ください。
-詳細は「追加変更(リニューアル)」にあります。
-
-
-~[]
-●最新版
-
-&[patch_maniacs_211010,https://ux.getuploader.com/xingqier/download/194](ゲームエンジン+エディタ, uploader.jp)
-&[tpc_211010,https://ux.getuploader.com/xingqier/download/193](コマンド生成補助ツール, uploader.jp)
-
-
-@> 追加変更:
-エディタ
-
-[特殊技能]
-・「命中率を計算」オプションを追加
-
-[変数/スイッチ]
-・TPC連携での名称編集機能(コマンド編集画面でF4, F5)を追加
-
-[コマンド編集]
-・TPC連携でFooty2を採用
-
-
-
-ゲームエンジン
-
-[文字列変数の操作 コマンド]
-・ファイル出力のフォルダ制限を解除
-・部分削除文字列のオペランドを追加
-・正規表現による置換文字列のオペランドを追加
-・正規表現による検索操作を追加
-・正規表現による抽出操作を追加
-
-[戦闘アニメの表示 コマンド]
-・再生バッファの選択機能を追加
-・反転再生機能を追加
-・位置の設定方法にピクチャ追従、座標指定、変数束縛を追加
-・キャッシュ保持をデフォルトで無効化
-
-[ゲームのオプション設定 コマンド]
-・戦闘アニメの同時表示数の上限変更を追加
-
-[ピクチャ表示 コマンド]
-・（通常描画のみ）拡大率を縦横別々に指定する機能を追加
-・スプライトシートで範囲を指定したアニメ機能を追加
-
-[ピクチャ移動 コマンド]
-・（通常描画のみ）拡大率を縦横別々に指定する機能を追加
-
-[文字列ピクチャの表示 コマンド]
-・文字列の変数指定を追加
-
-[条件分岐 コマンド]
-・ファイル出力可能 の判定を追加
-
-[ロードの実行 コマンド]
-・暗転を無効にするオプションを追加
-
-
-
-Game Engine (English Version)
-
-[RPG_RT.ini]
-Added a new item to the RPG_RT section.
-
-Encoding=(Number)
-
-*Currently it is only relevant for text file IO. 
-*The default value is 0.
-
-
-[System]
-Added the ability to set all thread locales to the system default at startup.
-
-
-
-@> 修正: 
-ゲームエンジン
-
-[ロード]
-・変更したチップセットが反映されていなかったのを修正
-
-[効果音]
-・ゲームリセット直前に鳴っていたwaveファイルの制御が正しくなかったのを修正
-
-[タイトルロゴ]
-・ウィンドウサイズが既定より小さいとき、正しく表示されていなかったのを修正
-
-[ピクチャ]
-・ゲームリセットで直前に使われていた同一IDピクチャのエフェクト等を引き継ぐことがあったのを修正
-
-[マップ]
-・敵出現歩数が25のとき、敵が出現しなくなっていたのを修正
-
-[ゲームのオプション設定 コマンド]
-・FatalMix -> テストプレイ状態を変更しない でもテストプレイが有効になっていたのを修正
-
-[文字列変数の操作 コマンド]
-・分割操作で対象または検索文字列と出力先が同一変数のとき挙動が正しくなかったのを修正
-・検索操作で開始位置の扱いが正しくなかったのを修正
-・サイズの大きいファイルを読み込むとエラーが出ていたのを修正
-
-[主人公の名前変更 コマンド]
-[主人公の肩書き変更 コマンド]
-・空文字列を指定したとき、セーブデータに反映されていなかったのを修正
-
-[職業の変更 コマンド]
-・特殊技能を覚えた状態で二度以上実行したときにエラーが出る可能性があったのを修正
-
-[ピクチャ表示 コマンド]
-・サイズの大きいPNGファイルを読み込むとエラーが出ていたのを修正
-・リセットやロード時に縦の拡大率が初期化されていなかったのを修正
-
-[ピクチャ移動 コマンド]
-・残り時間を変更しない移動で内容が更新されないケースがあったのを修正
-
-[文字列ピクチャの表示 コマンド]
-・制御文字の扱いを修正
-
-[ピクチャ編集（チップ） コマンド]
-・単一IDで下層チップを描画するとき、チップIDが正しく反映されていなかったのを修正
-・ウェイト系処理のあとに実行すると編集内容が反映されないケースがあったのを修正
-
-[ゲーム情報の取得 コマンド]
-・インタプリタの実行行が階層を遡れていなかったのを修正
-
-    
-バグ等を見つけたら作者に報告していただけると助かります。
-
-
-~[]
-●次回以降の予定
-
-エディタ整備
-
-
-~[]
-●使い方がわからないときは
-
-&[解説ページ,https://wikiwiki.jp/viprpg-dev/2003/%E6%8B%A1%E5%BC%B5%E3%83%91%E3%83%83%E3%83%81](VIPRPG@総合制作技術Wiki)が参考になるかもしれません。
-
-
-~[]
-●&[掲示板,https://jbbs.shitaraba.net/game/60858/](したらば)
-
-念のため用意しておきました。
-バグ報告や要望等はこちらからもどうぞ。
-
-
-~[]
-●&[まにぱ (拡張パッチ制作室),http://discord.gg/5NnbMtQ]
-
-公開前のファイルを置いています。
-
-
+//{
+<div><h2 id="steam2003-maniacs" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="steam2003-maniacs" href="#steam2003-maniacs" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>Steam2003 Maniacs</h2><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">ここは Steam版 RPG Maker 2003 のユーザー拡張パッチの1つである、<br style="clear: both;">マニアクス(Maniacs, Maniac Patch, まにぱ)をあつかうサイトです。<br style="clear: both;">軽量化や機能拡張などの改変がなされ、場面によってはある程度プログラミングの知識が要求されます。<br style="clear: both;">それらの機能が不要な場合は<a href="https://websupportviprpg.xxxxxxxx.jp/archive/kohaku2017/main/04_game.html?id=54" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">日本語化(+少しバグ修正)だけのパッチ</a>もありますので用途に合わせてお使いください。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="利用条件" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="利用条件" href="#利用条件" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>利用条件</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">パッチ全般の条件として <a href="http://steamcommunity.com/app/362870/discussions/0/541906348059148217/" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">Patch EULA</a>に同意する必要があります。<br style="clear: both;">マニアクス固有の条件としては自己責任での使用という点に同意する必要があります。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="お知らせ" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="お知らせ" href="#お知らせ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>お知らせ</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">更新回数が多くなり差分パッチの生成に不都合が出てきたため、バニラに対して適用する形式に変更しました。<br style="clear: both;">使用の際は元のデータ一式が必要になります。
+エディタ(rpg2003.exe)のバージョン表記は240822です。<br style="clear: both;">ゲームエンジン(RPG_RT.exe)のバージョン表記は241028です。  </p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="最新版" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="最新版" href="#最新版" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>最新版</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;"><a href="https://ux.getuploader.com/xingqier/download/198" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_241028</a>(uploader.jp)</p><ul>
+<li style="display: list-item; line-height: 1.4em;">ゲームエンジンの64bit化</li><li style="display: list-item; line-height: 1.4em;">エディタにプラグイン形式を導入</li><li style="display: list-item; line-height: 1.4em;">他多数</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="使い方がわからないときは" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="使い方がわからないときは" href="#使い方がわからないときは" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>使い方がわからないときは</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;"><a href="https://wikiwiki.jp/viprpg-dev/2003/%E6%8B%A1%E5%BC%B5%E3%83%91%E3%83%83%E3%83%81" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">解説ページ</a>(VIPRPG@総合制作技術Wiki)が参考になるかもしれません。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="バグ報告等" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="バグ報告等" href="#バグ報告等" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>バグ報告等</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">基本的に<a href="discord.gg/5NnbMtQ" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">開発室</a>(Discord, 無期限招待)での報告をおすすめします。<br style="clear: both;">
+一応<a href="https://jbbs.shitaraba.net/game/60858/" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">したらば掲示板</a>もあります。</p></div>
+//}
 
 :
 ダウンロード
-●リニューアル
-
-&[patch_maniacs_211010,https://ux.getuploader.com/xingqier/download/194](uploader.jp)
-&[patch_maniacs_210809,https://ux.getuploader.com/xingqier/download/190](uploader.jp)
-&[patch_maniacs_210530,https://ux.getuploader.com/xingqier/download/185](uploader.jp)
-&[patch_maniacs_210519,https://ux.getuploader.com/xingqier/download/184](uploader.jp)
-
-
-~[]
-●～21/04/14
-
-&[patch_maniacs_210414,https://ux.getuploader.com/xingqier/download/180](uploader.jp)
-&[patch_maniacs_200128,https://ux.getuploader.com/xingqier/download/179](uploader.jp)
-&[patch_maniacs_200126,https://ux.getuploader.com/xingqier/download/178](uploader.jp)
-&[patch_maniacs_191103,https://ux.getuploader.com/xingqier/download/176](uploader.jp)
-&[patch_maniacs_191021,https://ux.getuploader.com/xingqier/download/172](uploader.jp)
-&[patch_maniacs_191020,https://ux.getuploader.com/xingqier/download/171](uploader.jp)
-&[patch_maniacs_191007,https://ux.getuploader.com/xingqier/download/169](uploader.jp)
-&[patch_maniacs_190920,https://ux.getuploader.com/xingqier/download/167](uploader.jp)
-&[patch_maniacs_190904,https://ux.getuploader.com/xingqier/download/164](uploader.jp)
-&[patch_maniacs_190630,https://ux.getuploader.com/xingqier/download/151](uploader.jp)
-&[patch_maniacs_190625,https://ux.getuploader.com/xingqier/download/150](uploader.jp)
-&[patch_maniacs_190526,https://ux.getuploader.com/xingqier/download/147](uploader.jp)
-&[patch_maniacs_190220,https://ux.getuploader.com/xingqier/download/140](uploader.jp)
-&[patch_maniacs_190217,https://ux.getuploader.com/xingqier/download/137](uploader.jp)
-&[patch_maniacs_190122,https://ux.getuploader.com/xingqier/download/136](uploader.jp)
-&[patch_maniacs_190121,https://ux.getuploader.com/xingqier/download/134](uploader.jp)
-&[patch_maniacs_190120,https://ux.getuploader.com/xingqier/download/133](uploader.jp)
-&[patch_maniacs_190119,https://ux.getuploader.com/xingqier/download/132](uploader.jp)
-&[patch_maniacs_190118,https://ux.getuploader.com/xingqier/download/130](uploader.jp)
-&[patch_maniacs_181209,https://ux.getuploader.com/xingqier/download/127](uploader.jp)
-&[patch_maniacs_180809,https://ux.getuploader.com/xingqier/download/113](uploader.jp)
-
-
-~[]
-●TPC
-※再配布して使うものでもないため誤検知対応はあきらめました
-
-
-&[tpc_211010,https://ux.getuploader.com/xingqier/download/193](uploader.jp)
-&[tpc_210809,https://ux.getuploader.com/xingqier/download/188](uploader.jp)
-&[tpc_210530,https://ux.getuploader.com/xingqier/download/186](uploader.jp)
-&[tpc_210519,https://ux.getuploader.com/xingqier/download/181](uploader.jp)
-
-
-~[]
-●TPC 開発補助（有志作成）
-
-
-&[sublime_tpc_0.2.1ST4 (TPCほしい さん),https://cdn.discordapp.com/attachments/764888242083725322/845267108626432050/sublime_tpc_0.2.1ST4.zip](discord -> まにぱ)
-&[tpc_vscode (河澄 さん),https://cdn.discordapp.com/attachments/764888242083725322/846105889983037440/tpc_vscode.zip](discord -> まにぱ)
-
+//{
+<div><h2 id="ダウンロード" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="ダウンロード" href="#ダウンロード" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ダウンロード</h2><h5 id="64bit-(v241028~)" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="64bit-(v241028~)" href="#64bit-(v241028~)" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>64bit (v241028~)</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">推奨</p><p style="margin: 1em 0px; word-wrap: break-word;"><a href="https://ux.getuploader.com/xingqier/download/198" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_241028</a>(uploader.jp)  </p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="リニューアル-(v210519-~-v211010)" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="リニューアル-(v210519-~-v211010)" href="#リニューアル-(v210519-~-v211010)" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>リニューアル (v210519 ~ v211010)</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">改変範囲を全体にして1からコンパイルしたものの誤検知は変わらず</p><p style="margin: 1em 0px; word-wrap: break-word;"><a href="https://ux.getuploader.com/xingqier/download/194" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_211010</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/190" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_210809</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/185" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_210530</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/184" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_210519</a>(uploader.jp)  </p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="旧バージョン-(~-v210414)" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="旧バージョン-(~-v210414)" href="#旧バージョン-(~-v210414)" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>旧バージョン (~ v210414)</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">実行ファイルを直接改変している関係で誤検知多発</p><p style="margin: 1em 0px; word-wrap: break-word;"><a href="https://ux.getuploader.com/xingqier/download/180" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_210414</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/179" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_200128</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/178" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_200126</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/176" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_191103</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/172" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_191021</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/171" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_191020</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/169" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_191007</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/167" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190920</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/164" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190904</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/151" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190630</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/150" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190625</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/147" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190526</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/140" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190220</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/137" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190217</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/136" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190122</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/134" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190121</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/133" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190120</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/132" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190119</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/130" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_190118</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/127" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_181209</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/113" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">patch_maniacs_180809</a>(uploader.jp)  </p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="tpc" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="tpc" href="#tpc" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>TPC</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">プロジェクト編集機能があるため難読化を施しており、やはり誤検知がでます<br style="clear: both;">再配布して使うものでもないため対応はあきらめました</p><p style="margin: 1em 0px; word-wrap: break-word;"><a href="https://ux.getuploader.com/xingqier/download/199" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">tpc_241028</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/193" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">tpc_211010</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/188" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">tpc_210809</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/186" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">tpc_210530</a>(uploader.jp)<br style="clear: both;"><a href="https://ux.getuploader.com/xingqier/download/181" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">tpc_210519</a>(uploader.jp)  </p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="tpc-開発補助（有志作成）、ユーザープラグイン" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="tpc-開発補助（有志作成）、ユーザープラグイン" href="#tpc-開発補助（有志作成）、ユーザープラグイン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>TPC 開発補助（有志作成）、ユーザープラグイン</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">ユーザープラグインについては<a href="https://wikiwiki.jp/viprpg-dev/2003/%E6%8B%A1%E5%BC%B5%E3%83%91%E3%83%83%E3%83%81/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">VIPRPG@総合制作技術Wiki</a>に専用ページが設けられたため、安定版はこちらから探すことをおすすめします<br style="clear: both;">その他のものは<a href="http://discord.gg/5NnbMtQ" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">開発室</a>(Discord)へどうぞ  </p></div>//}
 
 :
 im版とpf版
-拡張パッチの適用に際して挙動の違う2種類の実行ファイルを選択できます。
-主な違いはマップイベントの出現条件をチェックするタイミングです。
-どちらを選択すべきかわからないときはim版を選んでください。
-
-
-~[]
-●im版
-
-付属のユーティリティツールでは「出現条件の変更直後（標準）/ Immediately (Default)」
-の項目で表されています。
-標準とある通り、従来のツクール200Xと同様に変数やスイッチの値が変更されるたびに
-現在のマップにある全てのイベントの出現条件をチェックします。
-互換性を重視したバージョンです。
-    
-    
-~[]
-●pf版
-
-付属のユーティリティツールでは「毎フレーム（一部の挙動に互換性なし）/ Per frame (Incompatible)」
-の項目で表されています。
-現在のマップにある全てのイベントの出現条件を1フレームに1度だけチェックします。
-これにより変数操作等のコストが大幅に下がるため、複雑な自作システムを組む際には
-大きなメリットになります。
-ただし、イベントページ切り替えの動作には注意してください
-（多くの場合でイベント末尾にウェイト0.0をおくと問題が解決します）。
-また、19/05/26よりイベントあたりの1フレームに実行可能なコマンド数上限が標準の1万から20万に
-引き上げられています。
-    
+//{
+<div><h2 id="im版とpf版" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="im版とpf版" href="#im版とpf版" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>im版とpf版</h2><h5 id="v241028～" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="v241028～" href="#v241028～" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>v241028～</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">実行ファイルが分かれていたim版とpf版は統合され、オプションで指定する形式になりました。<br style="clear: both;">「RPG_RT.ini」の「RPG_RT」セクションに「pf=1」と記述するとpf版の動作になります。<br style="clear: both;">「pf=0」または何も記述がないとim版の動作になります。<br style="clear: both;">それぞれの動作についてはv211010以前と同様です。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="～v211010" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="～v211010" href="#～v211010" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>～v211010</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">拡張パッチの適用に際して挙動の違う2種類の実行ファイルを選択できます。<br style="clear: both;">主な違いはマップイベントの出現条件をチェックするタイミングです。<br style="clear: both;">どちらを選択すべきかわからないときはim版を選んでください。  </p><h6 id="im版" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="im版" href="#im版" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>im版</h6><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">付属のユーティリティツールでは「出現条件の変更直後（標準）/ Immediately (Default)」<br style="clear: both;">の項目で表されています。  </p><p style="margin: 1em 0px; word-wrap: break-word;">標準とある通り、従来のツクール200Xと同様に変数やスイッチの値が変更されるたびに<br style="clear: both;">現在のマップにある全てのイベントの出現条件をチェックします。<br style="clear: both;">互換性を重視したバージョンです。  </p><h6 id="pf版" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="pf版" href="#pf版" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>pf版</h6><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">付属のユーティリティツールでは「毎フレーム（一部の挙動に互換性なし）/ Per frame (Incompatible)」<br style="clear: both;">の項目で表されています。  </p><p style="margin: 1em 0px; word-wrap: break-word;">現在のマップにある全てのイベントの出現条件を1フレームに1度だけチェックします。<br style="clear: both;">これにより変数操作等のコストが大幅に下がるため、複雑な自作システムを組む際には<br style="clear: both;">大きなメリットになります。  </p><p style="margin: 1em 0px; word-wrap: break-word;">ただし、イベントページ切り替えの動作には注意してください<br style="clear: both;">（多くの場合でイベント末尾にウェイト0.0をおくと問題が解決します）。  </p><p style="margin: 1em 0px; word-wrap: break-word;">また、19/05/26よりイベントあたりの1フレームに実行可能なコマンド数上限が標準の1万から20万に<br style="clear: both;">引き上げられています。  </p></div>
+//}    
 
 :
-追加機能
+制御文字の拡張
+//{
+<div><h2 id="制御文字の拡張" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="制御文字の拡張" href="#制御文字の拡張" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>制御文字の拡張</h2><h5 id="使用可能箇所の拡張" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="使用可能箇所の拡張" href="#使用可能箇所の拡張" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>使用可能箇所の拡張</h5><ul>
+<li style="display: list-item; line-height: 1.4em;">キャラ名やデータベースの用語等ほとんどの場面で特殊文字($*)、変数(\\V*, \\T*)が使用可能</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="文章ウィンドウ内で使える制御文字の追加/仕様変更" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="文章ウィンドウ内で使える制御文字の追加/仕様変更" href="#文章ウィンドウ内で使える制御文字の追加/仕様変更" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>文章ウィンドウ内で使える制御文字の追加/仕様変更</h5><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">制御文字の引数内の制御文字は事前展開しないように変更</p>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\E[a, b, c,...]</code></p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">文章処理の制御で指定されたコモンイベントを呼び出す</li><li style="display: list-item; line-height: 1.4em;">引数は任意数の数値または文字列</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\F[a, b, c]</code></p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">顔グラフィックを設定</li><li style="display: list-item; line-height: 1.4em;">ファイル名a、ファイル内インデックスb、反転状態c</li><li style="display: list-item; line-height: 1.4em;">ファイル名に”*“を指定するとデフォルト設定にする（=顔グラなし）</li><li style="display: list-item; line-height: 1.4em;">現在のウィンドウに改行やスペースを含め何も出力していない場合に限り、顔グラフィックの有無を切り替え可能</li><li style="display: list-item; line-height: 1.4em;">ファイル名は省略可能（現在の設定を引き継ぐ）<ul>
+<li style="display: list-item; line-height: 1.4em;">例：番号だけ5番に変更 -&gt; <code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\f[5]</code></li></ul>
+</li><li style="display: list-item; line-height: 1.4em;">反転状態は省略可能（反転なし）</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\W[n]</code></p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">nフレームウェイト</li><li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\.</code>や<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\|</code>と異なり、実際のウェイト値が+1されない</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="記法の拡張" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="記法の拡張" href="#記法の拡張" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>記法の拡張</h5><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">特殊文字の指定に数値が使用可能</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">$A = $[0]</code></li><li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">$a = $[26] = $[0,2]</code></li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列の引数は””で囲む</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\f["ファイル名",0]</code></li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">制御文字に引数があるとき、[]を外して書ける<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\v[2] = \\v2</code></li><li style="display: list-item; line-height: 1.4em;">直後の文字列がスペースまたは数字の場合は区別のために[]が必要</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">[]を使わないとき、制御文字と引数の間に以下の文字を書くことができる<ul>
+<li style="display: list-item; line-height: 1.4em;">任意個のスペース<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\v 2</code></li></ul>
+</li><li style="display: list-item; line-height: 1.4em;">コロン<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\v:2</code></li></ul>
+</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">[]を使わないとき、セミコロンで引数の終わりを明示可能<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\v2;</code></li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">引数内で制御文字を使うとき、エスケープ文字を省略可能<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\v[\\v[2]] = \\v[v[2]] = \\v:v:2 = \\vv2</code></li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">引数が複数ある場合はコンマまたはコロンで区切る<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\f["abc",3] = \\f:"abc":3</code></li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">可変長引数の場合は引数0との混同を避けるために[またはコロンで引数を開始する必要がある<ul>
+<li style="display: list-item; line-height: 1.4em;">OK <code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\e</code></li><li style="display: list-item; line-height: 1.4em;">OK <code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\e[123]</code></li><li style="display: list-item; line-height: 1.4em;">OK <code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\e:123</code></li><li style="display: list-item; line-height: 1.4em;">NG <code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\\e123</code></li></ul>
+</li></ul></div>
+//}
+ 
+:
+素材暗号化
+//{
+<div><h2 id="素材暗号化" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="素材暗号化" href="#素材暗号化" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>素材暗号化</h2><h5 id="概要" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="概要" href="#概要" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>概要</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">ゲームプロジェクトに含まれる任意のファイルを一つにまとめ、<br style="clear: both;">独自形式の暗号化を施して「RPG_RT.rs1」というファイルに変換する機能です。<br style="clear: both;">生成には専用のプラグインを提供しており、読み込みはv241028以降のゲームエンジンが対応しています。<br style="clear: both;">想定用途は以下です。</p><ul>
+<li style="display: list-item; line-height: 1.4em;">ネタバレ防止のため内容を伏せたいとき</li><li style="display: list-item; line-height: 1.4em;">規約上ファイルのコンバートが必須な素材の使用時</li><li style="display: list-item; line-height: 1.4em;">配布するプロジェクトのファイル構成を簡素にしたいとき</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="注意点" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="注意点" href="#注意点" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>注意点</h5><ul>
+<li style="display: list-item; line-height: 1.4em;">暗号化は強固ではなく、内容を見られる心配がないわけではない</li><li style="display: list-item; line-height: 1.4em;">暗号化した素材は通常形式のファイルよりも検索優先度が高い</li><li style="display: list-item; line-height: 1.4em;">ゲームプロジェクトの内容が更新されるたびに再度生成しなおす必要がある</li><li style="display: list-item; line-height: 1.4em;">常にすべての素材がメモリ上に置かれる</li><li style="display: list-item; line-height: 1.4em;">単体でファイルサイズの大きい素材は読み込みに時間がかかる</li><li style="display: list-item; line-height: 1.4em;">同じフォルダに存在し、拡張子だけが異なる同名ファイルが含まれる場合正しく取り出せない</li><li style="display: list-item; line-height: 1.4em;">ムービー素材は仮対応状態で挙動が従来と異なる<ul>
+<li style="display: list-item; line-height: 1.4em;">古い形式の動画ファイルは再生できない</li><li style="display: list-item; line-height: 1.4em;">拡縮がアスペクト比を保つ</li><li style="display: list-item; line-height: 1.4em;">非アクティブでも一時停止しない</li></ul>
+</li></ul></div>
+//}
+
+:
+エディタプラグイン
+//{
+
+<div><h2 id="エディタプラグイン" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="エディタプラグイン" href="#エディタプラグイン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタプラグイン</h2><h5 id="概要" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="概要" href="#概要" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>概要</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">パッチに含まれるcmdcs.dllを利用することにより、プラグインの形でエディタの一部機能を外部から拡張できるようになりました(v241028~)。<br style="clear: both;">
+現在はイベントコマンドの編集フォームの上書きとメインメニューから呼び出せる汎用フォームに対応しています。<br style="clear: both;">
+一部の追加コマンドはこの機能でフォームが実装されています。<br style="clear: both;">
+開発にはC#+WinFormsを使用します（作者の懐古趣味です）。<br style="clear: both;"></p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="使用方法" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="使用方法" href="#使用方法" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>使用方法</h5><ol style="list-style-type: decimal;">
+<li style="display: list-item; line-height: 1.4em;">エディタと同じフォルダにcmdcs.dllを置く</li><li style="display: list-item; line-height: 1.4em;">エディタと同じフォルダにPluginフォルダを作成する</li><li style="display: list-item; line-height: 1.4em;">Pluginフォルダ下に任意のプラグインを置いてエディタを起動する</li></ol><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="プラグイン設定" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="プラグイン設定" href="#プラグイン設定" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>プラグイン設定</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">エディタのメインメニュー→プラグイン→プラグイン設定から編集できます。<br style="clear: both;">
+イベントコマンドリストや各プラグインフォーム左下のプラグインボタンも同様です。<br style="clear: both;">
+<br style="clear: both;">
+以下の項目があります。</p><ul>
+<li style="display: list-item; line-height: 1.4em;">各プラグイン機能の有効/無効化(チェックボックス)</li><li style="display: list-item; line-height: 1.4em;">プラグインUIの言語切り替え(日本語/英語)</li><li style="display: list-item; line-height: 1.4em;">プラグイン経由で扱うテキストの文字コード</li></ul><p style="margin: 1em 0px; word-wrap: break-word;"><br style="clear: both;">
+編集した設定はPlugin\cmdcs.xmlに保存されます。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="作成方法" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="作成方法" href="#作成方法" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>作成方法</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;"><a href="http://discord.gg/5NnbMtQ" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">開発室</a>(Discord)へどうぞ</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h5 id="動作環境" style="clear: both;font-size: 1.2em; font-weight: bold; margin: 0.855em 0px 0.57em;"><a name="動作環境" href="#動作環境" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>動作環境</h5><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">Microsoft .NET Framework 4.8.1</p></div>
+
+//}
+
+:
+その他追加機能
+//{
 ●エディタ&ゲームエンジン
 
 ・有効な値の範囲が -9999999～9999999 から -2147483648～2147483647 に変更
@@ -651,141 +491,10 @@ im版とpf版
 ・処理の高速化
     コマンド実行全般、ピクチャの描画、イベント呼び出し、変数操作等
     多くの面で処理を高速化しました。
-    
-:
-追加変更(リニューアル)
+//}
 
+//{
 
-Mod(ified all)
-
-
-~[]
-●変更点
-
-いくつか互換性のない仕様変更があります
-
-・「accord.dll」「ultimate_rt_eb.dll」をゲームエンジンに内蔵
-・F9のデバッグシーンを独立ウィンドウで表示
-・F10の機能を撤廃
-・F12を単独キーでリセットに動作に変更
-・ランダム生成ダンジョン機能を撤廃
-・文章ウィンドウのマウス操作をデフォルトでオフに変更
-・ウィンドウのドラッグでゲーム進行が止まらないように変更
-・「FullPackageFlag」を参照しないように変更（RTPがなくてもエラーを出さない）
-
-
-~[]
-●機能追加
-
-
-[RTP]
-RPG_RT.ini -> 「RPG_RT」セクションにRuntimePackageKeyというキー名で
-参照するレジストリキーを指定できます
-
-
-[外字]
-Fontフォルダに「exfont」という名前の画像ファイルがあると外字データとして使用
-
-
-[数値入力の処理]
-キーボードからの数値入力に対応
-
-
-[解像度変更]
-RPG_RT.ini -> RPG_RTセクションにWinW, WinHの項目を追加
-それぞれゲームウィンドウの横幅、縦幅をピクセル単位の数値で指定
-
-※非テストプレイ状態で横320または縦240未満のとき、ロゴ表示が終わるまで指定サイズになりません
-※この指定方法は変更になる場合があります
-
-
-[文字列変数]
-新規に実装
-
-文章ウィンドウ等では通常の変数と同様に「\T[n]」という書式で参照できます
-ファイル入出力には事前に「Text」フォルダを用意しておく必要があります
-
-
-[画像ファイル]
-ゲームエンジンのみハイカラー以外の画像に対応
-24/32bit bmp/png
-
-現状α値は完全不透明/完全透明として扱われます
-
-
-[コマンド全般]
-多くのコマンドで値の変数指定に対応
-一部コマンドにオプション追加
-
-※現状tpc経由でのみ指定できます
-
-
-[新規コマンド]
-文字列変数の操作
-ゲーム情報の取得
-ピクチャの編集
-画像の出力
-キャラの動作追加
-
-※現状tpc経由でのみ生成できます
-    
- 
-:
-TPC
-●概要
-
-TPCはツクール2003のイベントコマンド生成補助ツールです
-200Xユーザーにはおなじみのツクールブリッジ系のツールと主な役割は同じです
-リニューアル版以降、エディタでフォームの配備が済んでいないコマンドについても
-TPCを用いて編集が可能です
-
-
-~[]
-●機能
-
-・テキストからイベントコマンド/コモンイベント/マップイベント/イベントページを生成し、
-　クリップボードに出力
-・〃既存のゲームデータを直接編集
-
-また、本家エディタと連携して以下の機能を利用できます
-
-・エディタのイベントコマンド編集画面からデータを受け取りテキストに変換
-・テキストからイベントコマンドを生成しエディタにデータを渡す
-
-
-~[]
-●エディタとの連携方法
-
-①「tpc.exe」を「rpg2003.exe（エディタ）」と同じフォルダに置く
-②エディタを起動し、イベントコマンド編集画面を開く
-③右クリックメニューから「tpcで編集」または「tpcで作成」を選択
-　※ショートカットキーでも可
-④表示されたウィンドウで任意の編集をおこないOKを押す
-
-v211010より連携時のテキストエディタにFooty2を採用しています
-エディタと同じフォルダにある「Footy2.dll」を削除またはリネームすると従来の形式に戻ります
-    
-    
-~[]
-●開発補助
-
-有志のかたがTPCのコーディング環境を用意してくれました
-
-・Sublime TPC (TPCほしい さん)
-    Sublime Text 4 用
-    単語のサジェストやシンタックスハイライトなどの機能が提供されています
-
-    &[sublime_tpc_0.2.1ST4,https://cdn.discordapp.com/attachments/764888242083725322/845267108626432050/sublime_tpc_0.2.1ST4.zip](discord -> まにぱ)
-
-    
-・TPC コーディング補助ファイル for Visual Studio Code (河澄 さん)
-    Visual Studio Code 用
-    ハイライト、入力補完、ショートカット実行と一連の動作を補助してくれます
-    
-    &[tpc_vscode,https://cdn.discordapp.com/attachments/764888242083725322/846105889983037440/tpc_vscode.zip](discord -> まにぱ)
-    
-    
-    
 :
 追加コマンド
 @
@@ -883,7 +592,7 @@ v211010より連携時のテキストエディタにFooty2を採用していま�
 
 ATBゲージ増加
 ダメージポップ
-ターゲティング
+ターゲッティング
 状態付与
 ダメージ以外の値変動
 
@@ -1093,372 +802,398 @@ ATBゲージの操作
 「注釈」※2行目以降
 
 @
-文字列変数の操作※
-●文字列変数の操作 / Control String Variables
+文字列変数の操作
+<div><h2 id="@>文字列変数の操作---@>control-strvar" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>文字列変数の操作---@>control-strvar" href="#@&gt;文字列変数の操作---@&gt;control-strvar" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;文字列変数の操作 - @&gt;Control Strvar</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3020</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">スイッチ、変数と並んで追加されている文字列変数を扱うコマンドです。  </p><p style="margin: 1em 0px; word-wrap: break-word;">※v241028時点ではコマンド編集フォームが用意されていませんが、有志プラグインに対応するものがあります。<br style="clear: both;"><a href="https://wikiwiki.jp/viprpg-dev/2003/%E6%8B%A1%E5%BC%B5%E3%83%91%E3%83%83%E3%83%81/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">VIPRPG@総合制作技術Wikiのユーザープラグインページ</a>を探すと見つかるかもしれません。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h6 id="制御項目" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="制御項目" href="#制御項目" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>制御項目</h6><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">項目名</th>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">代入</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数に文字列を代入します。空文字列の代入で内容を消去します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">連結</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数の文字列に新たに文字列を繋げて代入します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">数値化</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数の文字列を数値として解釈します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">長さ取得</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数の文字列長を取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">検索,検索(正規表現)</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数から指定文字列を検索し、出現位置を取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">抽出</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数から指定の正規表現に一致する文字列を取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">分割</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数の内容を指定の文字列で分割し、各要素および分割数を取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">1行切り出し</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数の最初の改行までを取得し、元の変数からは削除します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ファイル出力</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">変数の内容をテキストファイルに出力します</td>
+</tr>
+</tbody>
+</table></div>
 
+@
+ゲーム情報の取得
+<div><h2 id="@>ゲーム情報の取得---@>get-game-info" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>ゲーム情報の取得---@>get-game-info" href="#@&gt;ゲーム情報の取得---@&gt;get-game-info" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;ゲーム情報の取得 - @&gt;Get Game Info</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3021</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム内の雑多な情報を取得するコマンドです。<br style="clear: both;"></p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">項目名</th>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">マップサイズ</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">横幅,縦幅をタイル単位で取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">タイルID</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">上層/下層の任意範囲のタイルIDを矩形で取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ウィンドウサイズ</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ウィンドウサイズ(ゲーム画面)をピクセル単位で取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">画面ピクセル</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ゲーム画面の任意範囲のピクセルデータを取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">イベント実行状態</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">指定呼び出し階層のイベントタイプ,ID,ページ,開始条件,実行行を取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">チップセットID</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">現在のマップのチップセットIDを取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">主人公の顔グラフィック</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">指定主人公の顔グラフィックファイルとファイル内位置を取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">主人公の歩行グラフィック</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">指定主人公またはイベントの歩行グラフィックファイルとファイル内位置を取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">画面のカメラ位置</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">画面(0,0)のマップ座標をピクセル単位で取得します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">画面のシェイク値</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">現在のシェイク状態x,yを取得します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">演奏中のBGM</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">現在のBGMファイルと各種オプションを取得します</td>
+</tr>
+</tbody>
+</table></div>
 
-数値変数のそれと同様に文字列変数に対する操作を提供します
-※リニューアル版から実装
+@
+ピクチャの編集
+<div><h2 id="@>ピクチャの編集---@>edit-picture" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>ピクチャの編集---@>edit-picture" href="#@&gt;ピクチャの編集---@&gt;edit-picture" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;ピクチャの編集 - @&gt;Edit Picture</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3025</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャのピクセルを直接書き換えるコマンドです。<br style="clear: both;">
+変数を介して任意位置任意サイズの矩形を編集します。<br style="clear: both;"></p></div>
 
+@
+画像の出力
+<div><h2 id="@>画像の出力---@>output-picture" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>画像の出力---@>output-picture" href="#@&gt;画像の出力---@&gt;output-picture" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;画像の出力 - @&gt;Output Picture</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3026</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">現在のゲーム画面またはピクチャをファイルに出力するコマンドです。<br style="clear: both;">
+出力フォルダはPictureです。</p></div>
 
-[左辺値]
+@
+キャラクターの動作追加
+<div><h2 id="@>キャラクターの動作追加---@>add-action" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>キャラクターの動作追加---@>add-action" href="#@&gt;キャラクターの動作追加---@&gt;add-action" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;キャラクターの動作追加 - @&gt;Add Action</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3027</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">キャラクターの動作を追加で指定するコマンドです。<br style="clear: both;">
+「キャラクターの動作指定」に続けて記述されたときのみ有効です。<br style="clear: both;">
+主に引数の変数指定のために存在します。</p></div>
 
-・単体(定数)         T[1]
-・範囲(定数)         T[1..5]
-・単体(変数)         T[V[1]]
-・範囲(変数)         T[V[1]..V[5]]
-
-
-[操作内容]
-
-・代入               .asg
-・連結               .cat
-・数値化             .toNum
-・長さ取得           .getLen
-・検索               .inStr
-・分割               .split
-・ファイル出力       .toFile
-・1行取り出し        .popLine
-・検索(正規表現)     .exInStr
-・抽出(正規表現)     .exMatch
-
-
-[オペランド]
-オペランドは操作内容により異なります
-
-
-[代入/連結のオペランド]
-
-    ・文字列
-    T[1].asg "qwe"
-    T[1].asg T[2]
-    
-    ・数値
-    T[1].asg 234
-    T[1].asg V[234]
-    
-    ・スイッチ
-    T[1].asg S[234]
-    T[1].asg S[V[234]]
-    
-    ・名前
-    アクター            T[1].asg.actor[1].name
-    特殊技能            T[1].asg.skill[1].name
-    アイテム            T[1].asg.item[1].name
-    敵キャラ            T[1].asg.enemy[1].name
-    敵グループ          T[1].asg.troop[1].name
-    地形                T[1].asg.terrain[1].name
-    属性                T[1].asg.element[1].name
-    状態                T[1].asg.state[1].name
-    戦闘アニメ          T[1].asg.anim[1].name
-    チップセット        T[1].asg.tileset[1].name
-    スイッチ            T[1].asg.s[1].name
-    変数                T[1].asg.v[1].name
-    文字列変数          T[1].asg.t[1].name
-    コモンイベント      T[1].asg.cev[1].name
-    職業                T[1].asg.class[1].name
-    戦闘アニメ２        T[1].asg.anim2[1].name
-    マップ              T[1].asg.map[1].name
-    マップイベント      T[1].asg.mev[1].name
-    パーティメンバー    T[1].asg.member[1].name
-
-
-    ・連結
-    T[1].asg.cat "qwe", "rty"
-    T[1].asg.cat "qwe", "rty", "uio"
-    T[1].asg.cat T[3], T[4], T[5]
-    
-    
-    ・挿入
-    T[1].asg.ins "qwe", 1, "|"      //T[1] == q|we
-    
-    
-    ・置換
-    T[1].asg.rep "qwe", "e", "|"    //T[1] == qw|
-    
-    
-    ・置換（正規表現）
-    T[1].asg.exrep "0q1w2e3", "\d", ""    //T[1] == qwe
-    
-    
-    ・部分削除
-    T[1].asg.rem "qwe", 0, 2        //T[1] == e
-    
-    
-    ・切り取り
-    T[1].asg.subs "qwe", 1, 2       //T[1] == we
-    
-    
-    ・配列
-    T[1].join "|", V[1], 3          //T[1] == (V[1]の値)|(V[2]の値)|(V[3]の値)
-    T[1].join ", ", T[5], 3         //T[1] == (T[5]の値), (T[6]の値), (T[7]の値)
-    
-    
-    ・ファイル
-    T[1].asg.file "qwe", .utf8      //T[1] == (Text\qwe.txt の内容)
-
-
-[数値化のオペランド]
-    T[1].toNum V[1]                 //V[1] == T[1]を数値化したもの(失敗時は0)
-
-
-[長さ取得のオペランド]
-    T[1].getLen V[1]                //V[1] == T[1]の文字数
-    
-    
-[検索のオペランド]
-    T[1].inStr "qwe", V[1]          //V[1] == T[1]内のqweの出現位置(失敗時は-1)
-    
-
-[分割のオペランド]
-    T[1].split "|", T[5], V[1]      //T[5]~ == T[1]の内容を|で分割した文字列, V[1] == 分割数
-
-
-[ファイル出力のオペランド]    
-    T[1].toFile "qwe", .utf8        //Text\qwe.txt == (T[1]の内容)
-
-
-[1行取り出しのオペランド]
-    T[1].popLine T[2]               //T[2] == (T[1]の1行目), T[1] == (T[1]の1行目を除いた内容)
-
-
-
+@
+ピクチャの編集(チップ)
+<div><h2 id="@>ピクチャの編集(チップ)---@>edit-picture(tile)" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>ピクチャの編集(チップ)---@>edit-picture(tile)" href="#@&gt;ピクチャの編集(チップ)---@&gt;edit-picture(tile)" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;ピクチャの編集(チップ) - @&gt;Edit Picture(Tile)</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3028</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャにタイル単位でマップを描画するコマンドです。<br style="clear: both;">
+描画するタイルIDは単体また変数での矩形範囲に対応しています。<br style="clear: both;">
+現在のチップセット以外も指定可能です。</p></div>
 
 
 @
-ゲーム情報の取得※
-●ゲーム情報の取得 / Get Game Info
-
-
-ゲーム実行時の様々な値を取得します
-※リニューアル版から実装
-
-
-[マップサイズ]
-主人公のいるマップのサイズをマス単位で取得します
-
-@sys.getInfo.mapSize.dst V[1]       //V[1]にマップの横マス数、V[2]に縦マス数
-
-
-[チップID]
-主人公のいるマップから任意の矩形でチップIDを取得します
-
-・上層
-    @sys.getInfo.tiles 2, 3, 10, 10 .upper.dst V[1]
-    //マップ内の位置(2, 3)から10*10のチップIDをV[1]~に出力
-
-・下層
-    @sys.getInfo.tiles 2, 3, 10, 10 .lower.dst V[1]
-    //マップ内の位置(2, 3)から10*10のチップIDをV[1]~に出力
-
-
-[ウィンドウサイズ（等倍）]
-ゲーム画面のサイズを取得します
-
-@sys.getInfo.winSize.dst V[1]       //V[1]にウィンドウの横幅、V[2]に縦幅
-
-
-[ゲーム内画面ピクセル]
-ゲーム画面から任意の矩形でピクセルデータを取得します
-
-@sys.getInfo.pixel 2, 3, 10, 10 .dst V[1]
-//画面内位置(2, 3)から10*10のピクセルデータをV[1]~に出力
-
-
-[イベント情報]
-@sys.getInfo.interpreter.current(0) .dst V[1]
-//実行中イベントの現在階層の情報をV[1]~に出力
-    
-・階層
-    0:  実行中
-    0>: 呼び出し階層を遡る
-    0<: 最初のイベントから辿る
-
-・出力内容
-    dst[0]                  イベントの種類※
-    dst[1]                  イベントID
-    dst[2]                  ページID
-    dst[3]                  開始条件※
-    dst[4]                  実行中の行
-
-・イベントの種類
-    01: マップイベント
-    02: コモンイベント
-    04: バトルイベント
-
-・呼び出し理由
-    00: 決定キー
-    01: 接触
-    02: 被接触
-    03: 自動開始
-    04: 並列処理
-    05: 呼び出し
-    06: 戦闘開始
-    07: 並列処理（戦闘中）
-
-
-[現在のチップセットID]
-@sys.getInfo.tilesetId.dst V[1]       
-//V[1]にチップセットIDを出力
-
-
-[顔グラ]
-@sys.getInfo 
-    .face
-    
-    .actor[n]               アクターnを対象にする
-    .win                    文章ウィンドウ設定を対象にする
-    
-    .static                 プロジェクトデータを取得する
-    .dynamic                実行中のデータを取得する
-
-    .dst (a), (b)           ファイルの出力先 T[a]、インデックス V[b]
-    
-    
-[歩行グラ]
-@sys.getInfo 
-    .body                   
-    
-    .actor[n]               アクターnを対象にする
-    .ev[n]                  マップイベントnを対象にする
-    
-    .static                 プロジェクトデータを取得する
-    .dynamic                実行中のデータを取得する
-
-    .dst (a), (b)           ファイルの出力先 T[a]、インデックス V[b]
-    
-    
-[カメラ位置]
-@sys.getInfo 
-    .camera
-    .dst (n)                出力先 V[n..n+1]
-
-
+文章処理の制御
+<div><h2 id="@>文章処理の制御---@>control-message" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>文章処理の制御---@>control-message" href="#@&gt;文章処理の制御---@&gt;control-message" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;文章処理の制御 - @&gt;Control Message</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3029</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">メッセージウィンドウで発生する特定のイベントを監視/制御するコマンドです。<br style="clear: both;">
+対象のイベントが起きると指定したコモンイベントが呼び出されます。<br style="clear: both;">
+また、その際イベントに関する情報を変数を通して任意に受け取ったり、その値を加工して返却することができます。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h6 id="制御項目" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="制御項目" href="#制御項目" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>制御項目</h6><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">項目名</th>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ユーザーイベント</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文章中に\Eが出現した時に呼ばれます</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ウィンドウ生成</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文章ウィンドウが開くときに呼び出されます</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">ウィンドウ破棄</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文章ウィンドウが閉じるときに呼び出されます</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字描画</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字が描画されるときに呼び出されます</td>
+</tr>
+</tbody>
+</table><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h6 id="引数" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="引数" href="#引数" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>引数</h6><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">引数にはシステムが自動で提供するものとユーザーが任意に提供するものの2種類があり、それぞれが変数と文字列変数を使用します。<br style="clear: both;">
+引数の内容はイベントの種類ごとに異なります。<br style="clear: both;">
+引数は指定された変数番号から順に配列として格納されます。不要な種類の引数は変数番号に0を指定すると受け渡しが行われません。<br style="clear: both;"></p></div>
+@
+スクリプト
+<div><h2 id="@>スクリプト---@>script" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>スクリプト---@>script" href="#@&gt;スクリプト---@&gt;script" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;スクリプト - @&gt;Script</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3030</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3031(2行目以降)</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">JavaScriptを実行するコマンドです。<br style="clear: both;">
+現在のところツクール内のスイッチ/変数/文字列変数の操作のみ連携機能が提供されています。</p><pre style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); overflow: auto; padding: 0.5em;"><code data-origin="<pre><code>s[1] = 1;
+v[1] = 100;
+t[1] = 'qwe';
+</code></pre>" style="border: 0px; display: block;font-family: Consolas, Inconsolata, Courier, monospace; font-weight: bold; white-space: pre; margin: 0px;border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-size: 1em; letter-spacing: -1px; font-weight: bold;">s[1] = 1;
+v[1] = 100;
+t[1] = 'qwe';
+</code></pre></div>
 
 @
-ピクチャの編集※
-●ピクチャの編集 / Edit Picture
-
-
-ピクチャの画像データを直接変更します
-通常/文字列ピクチャどちらも対象にできます
-変更を加えたピクチャはセーブデータに反映されます
-
-※リニューアル版から実装
-
-
-@pic[1].setPixel .xywh 2, 3, 10, 10 .src V[1]
-//ピクチャ1のグラフィック内の位置(2, 3)から10*10のピクセルデータをV[1]~から読み取った値に書き換え
-
-
+画面のズーム
+<div><h2 id="@>画面のズーム---@>zoom-screen" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>画面のズーム---@>zoom-screen" href="#@&gt;画面のズーム---@&gt;zoom-screen" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;画面のズーム - @&gt;Zoom Screen</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3032</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">指定座標を中心に画面をズームするコマンドです。<br style="clear: both;">
+現在のところズームアウトはサポートされません。<br style="clear: both;">
+単純に画面を画像と見立てた処理であるため、スクロール等のカメラ位置に影響を与えません。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h6 id="レイヤー" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="レイヤー" href="#レイヤー" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>レイヤー</h6><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">ピクチャに備わっているものと共通で、どのレイヤーまでを巻き込んでズームするのかを指定できます。<br style="clear: both;">
+レイヤーに0を指定するとズームを解除します。</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h6 id="動作フレーム" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="動作フレーム" href="#動作フレーム" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>動作フレーム</h6><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">指定の拡大率に到達するまでの時間をフレーム単位で指定します。</p></div>
 @
-画像の出力※
-●画像の出力 / Output Image
+コンソール
+<div><h2 id="@>コンソール---@>console" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="@>コンソール---@>console" href="#@&gt;コンソール---@&gt;console" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>@&gt;コンソール - @&gt;Console</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">コード</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">3033</td>
+</tr>
+</tbody>
+</table><p style="margin: 1em 0px; word-wrap: break-word;">コンソールウィンドウを操作するコマンドです。</p><ul>
+<li style="display: list-item; line-height: 1.4em;">操作<table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">種類</th>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">開く</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">コンソールウィンドウを開きます</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">閉じる</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">コンソールウィンドウを閉じます</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字列出力</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">コンソールに文字列を出力します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字列入力</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">プレイヤーからの文字列入力を受け付けます<br style="clear: both;margin-top: 0px;margin-bottom: 0px;">値は文字列変数で受け取ります</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字色設定</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">コンソールに表示するテキストの前景/背景色を設定します</td>
+</tr>
+</tbody>
+</table>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">オプション<table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">種類</th>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">制御文字を展開</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">テキストの入出力で文字列中の制御文字を展開します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">16進数</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">制御文字の展開で数値を16進数表記にします</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">改行をしない</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">テキスト出力時に末尾の改行を無効にします</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">前景色を変更</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字色の設定時に前景色の指定を有効にします</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">背景色を変更</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">文字色の設定時に背景色の指定を有効にします</td>
+</tr>
+</tbody>
+</table>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">色設定に使える値<table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">値</th>
+<th style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">1</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">青を足します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">2</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">緑を足します</td>
+</tr>
+<tr>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">4</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">赤を足します</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">8</td>
+<td style="border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">指定色を強調表示します</td>
+</tr>
+</tbody>
+</table>
+</li></ul></div>
 
 
-32bitPNG形式でゲーム画面またはピクチャの画像を出力します
-※リニューアル版から実装
 
 
-[ゲーム画面を出力]
-@img.save.screen.dst "qwe"              //ゲーム画面をqwe.pngに出力
+//}
 
 
-[ピクチャを出力]
-@img.save.pic 1 .dst "qwe"              //ピクチャ1をqwe.pngに出力
-
-
-@
-キャラの動作追加※
-●キャラの動作追加 / Add Move Route
-
-
-キャラの動作指定コマンドに続けて使うことで動作を追加できます
-エディタ上の可読性や値の変数指定対応を目的としたコマンドです
-1コマンドで1動作しか指定できません
-※リニューアル版から実装
-
-
-@ev.addAction 
-    .moveUp(a)                      上に移動
-    .moveRight(a)                   右に移動
-    .moveDown(a)                    下に移動
-    .moveLeft(a)                    左に移動
-    .moveUpperRight(a)              右上に移動
-    .moveLowerRight(a)              右下に移動
-    .moveUpperLeft(a)               左上に移動
-    .moveLowerLeft(a)               左下に移動
-    .moveRandom(a)                  ランダムに移動
-    .moveToward(a)                  主人公に近寄る
-    .moveAway(a)                    主人公から逃げる
-    .moveForward(a)                 一歩前進
-    .move(a, b)                     aにb歩移動
-    .faceUp                         上を向く
-    .faceRight                      右を向く
-    .faceDown                       下を向く
-    .faceLeft                       左を向く    
-    .turnRight                      右に90度回転
-    .turnLeft                       左に90度回転
-    .turnBack                       180度方向転換
-    .turnSide                       右か左に90度回転
-    .turnRandom                     ランダムに方向転換
-    .turnToward                     主人公の方を向く
-    .turnAway                       主人公の逆を向く    
-    .face(a)                        aを向く
-    .pause                          一時停止        
-    .beginJump                      ジャンプ開始    
-    .endJump                        ジャンプ終了
-    .fixDir                         向き固定    
-    .unfixDir                       向き固定解除
-    
-    .speed(a)                       移動速度指定
-    .freq(a)                        移動頻度指定
-    .trans(a)                       透明度指定
-    .switch(id, val)                スイッチ操作
-    .setBody(file, idx)             グラフィック変更
-    .se(file, vol, pitch, balance)  効果音
-    .beginThrough                   すり抜け開始
-    .endThrough                     すり抜け終了
-    .pauseAnim                      アニメ停止
-    .resumeAnim                     アニメ再開
-
-
-
-@
-ピクチャ編集(チップ)※
-●ピクチャ編集(チップ) / Edit Picture(Tile)
-
-
-ピクチャに対して指定されたチップIDでマップを描画します
-※リニューアル版から実装
-
-
-@pic[n].drawTile
-
-    .xywh (x), (y), (w), (h)    ピクセルを設定する矩形
-  
-    .lower                      下層を描画する
-    .upper                      上層を描画する
-
-    .single (n)                 単一のタイルnで描画する
-    .range (n)                  指定範囲ぶんのタイルIDを変数nから読み取る
-
-    .disableAutoTile            下層描画でオートタイル処理を無効にする
-    .wipe                       描画前に指定範囲をクリアする
-
-    .tilesetId (n)              描画に使うタイルセット
-    .pattern (n)                アニメパターン
-
-
-    ※タイルIDは「マップの書き換え」コマンドと同じ
-    ※tilesetId に 0 指定で現在マップのものを使う
-    ※pattern に -1 指定でマップと同じ状態のパターンを使う
-
-
-
+//{
 :
 変更コマンド
-
 @
 ピクチャ表示
 ●ピクチャ表示 / Show Picture
@@ -1614,1229 +1349,669 @@ ID指定に全てのピクチャを追加しました。
 
 戦闘開始前のフラッシュを無効化するオプションを追加しました。
     
+//}
 
 
-@
-セーブ画面の呼び出し※
-●セーブ画面の呼び出し / Open Save Menu 
-
-
-セーブ画面以外のシステム機能を呼び出せるようになりました
-※リニューアル版から実装
-
-@sys.call        
-    .saveMenu               セーブ画面
-    .loadMenu               ロード画面
-    .partyMenu              パーティメニュー
-    .optionMenu             オプションウィンドウ
-    .licenseMenu            ライセンスウィンドウ
-    .debugMenu              デバッグウィンドウ
-    .toggleFullscreen       フルスクリーンモード切り替え
-    .f12                    ゲームリセット    
-
-    
-@
-セーブ禁止の変更※
-●セーブ禁止の変更 / Change Save Access
-
-
-セーブ画面以外のシステム機能を制御できるようになりました
-※リニューアル版から実装
-
-@sys.limitation        
-    .saveMenu               セーブ画面
-    .partyMenu              パーティメニュー
-    .optionMenu             オプションウィンドウ
-    .debugMenu              デバッグウィンドウ
-    .toggleFullscreen       フルスクリーンモード切り替え
-    .f12                    ゲームリセット    
-
-
-@
-画面のスクロール※
-●画面のスクロール / Scroll Screen
-
-
-ピクセル単位の操作を追加しました
-※リニューアル版から実装
-    
-    
-[ピクセル単位のシフト]
-@scr.pxShift(a, b)          //水平方向にa, 垂直方向にbシフト
-
-
-[ピクセル単位の位置指定]
-@scr.set(x, y)              
-
-※プレイヤーの移動によるスクロールとの兼ね合いがうまくいかないケースがあります
-
-
-@
-共有セーブの操作※
-●共有セーブの操作 / Control Shared Save
-
-
-文字列変数に対応しました
-※リニューアル版から実装
-    
-
-[共有->現セーブ]
-gt[a].copyTo t[b], c            //共有セーブaから現セーブbにc要素コピー
-
-
-[共有<-現セーブ]
-gt[a].copyFrom t[b], c          //現セーブbから共有セーブaにc要素コピー
-
-
-@
-ピクチャの表示※
-●ピクチャの表示 / Show Picture
-
-
-（通常描画のみ）拡大率を縦横別々に指定する機能を追加しました
-スプライトシートで範囲を指定したアニメ機能を追加しました
-※リニューアル版から実装
-
-
-@pic[1].show {
-    .scale2 100, 50                 //横100%, 縦50%
-    .rangeAnim 6, 5, 10             //5..10を6フレームずつアニメ
-}
-
-
-@
-ピクチャの移動※
-●ピクチャの移動 / Move Picture
-
-
-座標、拡大率、透明度の相対指定モードを追加しました
-rgbsの変数値指定を追加しました
-特定の項目を変更しないオプションを追加しました
-（通常描画のみ）拡大率を縦横別々に指定する機能を追加しました
-※リニューアル版から実装
-    
-    
-@pic[1].move {
-    .rgbs v[2], v[3], v[4], v[5]    //色調の変数指定    
-    .relative                       //座標、拡大率、透明度を相対指定
-    
-    .keepRgbs                       //色調の値を変更しない
-    .keepEffect                     //特殊効果を変更しない
-    .keepBlend                      //ブレンドモードを変更しない
-    .keepTime                       //移動時間を変更しない
-    .keepFlip                       //反転状態を変更しない
-    .scale2 100, 50                 //横100%, 縦50%
-}
-
-
-@
-文字列ピクチャの表示※
-●文字列ピクチャの表示 / Show String Picture
-
-
-文字列の変数指定を追加しました
-（通常描画のみ）拡大率を縦横別々に指定する機能を追加しました
-※リニューアル版から実装
-
-
-@pic[1].strpic {
-    t[1]                            //t[1]の内容を表示
-    .scale2 100, 50                 //横100%, 縦50%
-}
-
-
-@
-繰り返しの処理※
-●繰り返しの処理 / Loop
-
-
-要素を指定して繰り返す機能を追加しました
-マップイベントの列挙を追加しました
-※リニューアル版から実装
-
-
-@foreach [2, 3, 5] .dst v[1] {
-    @msg.show "\>\v[2]"     //dst+1番に現在のループインデックス
-    @pic[v:1].erase
-    
-}   //ピクチャの2, 3, 5番を消去
-    
-    
-@foreach .mev .dst v[1] {
-    @msg.show "\>\v[2]"     //dst+1番に現在のループインデックス
-    @call .mev v[1] v[3]    //全イベントのv[3]ページを呼び出し   
-}
-
-
-    
-@
-ウェイト※
-●ウェイト / Wait
-
-
-フレーム単位の指定機能を追加しました
-※リニューアル版から実装
-
-
-@wait 5 .frame              //5フレームウェイト
-    
-    
-@
-セーブ情報の取得※
-●セーブ情報の取得 / Get Save Info
-
-
-先頭キャラの名前を取得できるようになりました
-※リニューアル版から実装
-
-
-@save[1].getInfo .name t[4]         //セーブ1の先頭キャラ名をT[4]に出力
-
-
-@
-文章オプションの設定※
-●文章オプションの設定 / Display Text Options
-
-
-文章ウィンドウのサイズ指定機能を追加しました
-文章ウィンドウのフォント名、フォンサイズ指定機能を追加しました
-※リニューアル版から実装
-
-
-@msg.opt {
-    .size a, b              //ウィンドウサイズ(a, b)
-    .font c, d              //フォント名c, フォントサイズd
-}
-
-
-@
-繰り返し処理の中断※
-●繰り返し処理の中断 / Break
-
-
-処理を中断し、抜け出すブロック数を指定できるようになりました
-1ループ処理をスキップする機能を追加しました
-
-※リニューアル版から実装
-
-
-[ブロック数指定]
-
-@loop.inf() {
-    @loop.inf() {
-        @break .level 2            //2つ分ループを抜ける
-    }
-}
-
-
-[処理のスキップ]
-
-@loop 5 .dst v[1] {
-    @if v[1] == 3 {
-        @continue                  //スキップ
-    }
-    
-    @msg.show "\>v[1]"
-}
-
-
-@
-ゲームのオプション設定※
-●ゲームのオプション設定 / Set Game Option
-
-
-マウスによる文章ウィンドウ操作の可不可が指定可能になりました
-デフォ戦画面の表示位置を指定可能になりました
-戦闘アニメの同時表示数の上限変更を追加しました
-※リニューアル版から実装
-
-
-[マウスによる文章ウィンドウ操作]
-@sys.gameOpt .mouse.disableMsgProcession(0)     //マウス操作有効
-@sys.gameOpt .mouse.disableMsgProcession(1)     //マウス操作無効
-
-
-[デフォ戦の画面]
-@sys.btlPos
-    .center             //中心
-    .topLeft            //左上
-    .bottomLeft         //左下
-    .topRight           //右上
-    .bottomRight        //右下
-    .top                //上
-    .bottom             //下
-    .left               //左
-    .right              //右
-
-[戦闘アニメの同時表示数]
-@sys.gameOpt
-    .animLimit 10        //上限を10に変更
-    
-
-@
-ピクチャ情報の取得※
-●ピクチャ情報の取得 / Get Pic Info
-
-
-画像のピクセルデータを取得可能になりました
-※リニューアル版から実装
-
-
-@pic[1].getInfo .pixel 0, 3, 10, 10 .dst v[1]
-//ピクチャ1の位置(0, 3)から10*10のピクセルデータをv[1]に出力
-
-
-@
-条件分岐※
-●条件分岐 / Conditional Branch
-
-
-文字列変数の項目を追加しました
-式形式に対応しました
-マップイベントの存在判定を追加しました
-ファイル出力可能 の判定を追加しました
-
-※リニューアル版から実装
-
-
-[文字列変数]
-@if t[2] .eq "qwe"              //t[2]がqweかどうか
-@if t[2] .neq "qwe"             //t[2]がqweでないかどうか
-@if t[2] .contains "qwe"        //t[2]がqweを含むかどうか
-@if t[2] .notContains "qwe"     //t[2]がqweを含まないかどうか
-
-
-[式]
-@if \`v[3] + 1 > 0               //\`(式)
-
-
-[指定イベントが存在する]
-@if .ev[2].exists               //EV[0002]が存在するかどうか
-
-
-[ファイルが出力可能]
-@if .canOutput
-
-
-@
-お店の処理※
-●お店の処理 / Shop Processing
-
-商品の変数指定に対応しました
-※リニューアル版から実装
-
-
-@shop.goods v[2], v[3]          //v[2]からv[3]個の数値をアイテムIDとして扱う
-
-
-@
-変数の操作※
-●変数の操作 / Control Variables
-
-オペランドに項目を追加しました
-※リニューアル版から実装
-
-
-[線形補間]
-v[1] = lerp(0, 10, 5, 10)       //lerp(0, 10, 0.5)
-
-
-[配列の合計]
-v[1] = sum(v[2], 3)             //v[1] = v[2] + v[3] + v[4]
-
-
-[配列の最小値]
-v[1] = amin(v[2], 3)            //v[1] = min(min(v[2], v[3]), v[4])
-
-
-[配列の最大値]
-v[1] = amax(v[2], 3)            //v[1] = max(max(v[2], v[3]), v[4])
-
-
-@
-変数配列の操作※
-●変数配列の操作 / Control Var Array
-
-操作を追加しました
-※リニューアル版から実装
-
-
-[連動ソート(昇順)]
-v[1..3] = [3, 0, 1]
-v[11..13] = [6, 9, 4]
-v[1].sort 3 .sync v[11]         
-
-//v[1..3] == [0, 1, 3], v[11..13] == [9, 4, 6]
-
-
-[連動ソート(降順)]
-v[1..3] = [3, 0, 1]
-v[11..13] = [6, 9, 4]
-v[1].sortDescending 3 .sync v[11]         
-
-//v[1..3] == [3, 1, 0], v[11..13] == [6, 4, 9]
-
-
-[参照外し]
-v[2..4] = [8, 9, 10]
-v[8..10] = [99, 999, 9999]
-v[2].deref v[100], 3            
-
-//v[100..102] == [99, 999, 9999]
-
-
-@
-ロードの実行※
-●ロードの実行 / Load
-
-
-暗転を無効にするオプションを追加しました
-※リニューアル版から実装
-
-@save[n].load
-    .disableBlackout
-
-
-@
-戦闘アニメの表示※
-●戦闘アニメの表示 / Show Animation
-
-
-再生バッファの選択機能を追加しました
-反転再生機能を追加しました
-位置の設定方法にピクチャ追従、座標指定、変数束縛を追加しました
-キャッシュ保持をデフォルトで無効にしました
-※リニューアル版から実装
-
-
-@anim[n].show {
-    .picTarget 3            //3番のピクチャに追従して表示
-    .pos 160, 120           //座標(160, 120)に表示
-    .bind v[1], v[2]        //変数[1, 2]の値に追従して表示
-
-    .buffer 5               //ID5番で再生
-    
-    .reverse 1              //反転
-    .keep                   //再生後にキャッシュを保持
-}
-
-
-@
-(変数値での指定対応)※
-
-
-[システムBGMの変更]
-ファイル名、フェードイン時間、ボリューム、テンポ、バランス
-
-
-[システム効果音の変更]
-ファイル名、ボリューム、テンポ、バランス
-
-
-[ピクチャの表示]
-ファイル名、スプライト分割数、色調
-
-
-[ピクチャの移動]
-色調
-
-
-[BGMの演奏]
-ファイル名、フェードイン時間、ボリューム、テンポ、バランス
-
-
-[効果音の演奏]
-ファイル名、ボリューム、テンポ、バランス
-
-
-[キャラの動作指定]
-対象イベント、移動頻度
-
-
-[キャラクターのフラッシュ]
-対象イベント、赤 青 緑 強さ
-
-
-[ウェイト]
-値
-
-
-[顔グラフィックの設定]
-対象、ファイル名、ファイル内インデックス
-
-
-[戦闘アニメ]
-対象、アニメID
-
-
-[チップセットの変更]
-チップセットID
-
-
-[イベントの位置を設定]
-対象
-
-
-[主人公の名前変更]
-対象、名前
-
-
-[主人公の肩書き変更]
-対象、肩書き
-
-
-[BGMのフェードアウト]
-フェードアウト時間
-
-
-[遠景の変更]
-ファイル名、縦横スクロール速度
-
-
-[主人公の歩行グラフィック変更]
-対象、ファイル名、ファイル内インデックス
-
-
-[システムグラフィックの変更]
-ファイル名
-
-
-[画面の消去]
-種類
-
-
-[画面の表示]
-種類
-
-
-
-※リニューアル版から実装
-
-
-:
-既知のバグ
-・エディタ（日本語版のみ）
-    データベース -> 状態 -> HP -> x 歩あるくごとに y P
-    データベース -> 状態 -> MP -> x 歩あるくごとに y P
-        x と y の入力フォームが逆転している
-        
-    バトルイベント内で戦闘用でない条件分岐を編集しようとするとエラー
-
-    
+ 
 :
 更新履歴
-~[]
-●2021/10/10
-@> 追加変更:
-エディタ
-
-[特殊技能]
-・「命中率を計算」オプションを追加
-
-[変数/スイッチ]
-・TPC連携での名称編集機能(コマンド編集画面でF4, F5)を追加
-
-[コマンド編集]
-・TPC連携でFooty2を採用
-
-
-
-ゲームエンジン
-
-[文字列変数の操作 コマンド]
-・ファイル出力のフォルダ制限を解除
-・部分削除文字列のオペランドを追加
-・正規表現による置換文字列のオペランドを追加
-・正規表現による検索操作を追加
-・正規表現による抽出操作を追加
-
-[戦闘アニメの表示 コマンド]
-・再生バッファの選択機能を追加
-・反転再生機能を追加
-・位置の設定方法にピクチャ追従、座標指定、変数束縛を追加
-・キャッシュ保持をデフォルトで無効化
-
-[ゲームのオプション設定 コマンド]
-・戦闘アニメの同時表示数の上限変更を追加
-
-[ピクチャ表示 コマンド]
-・（通常描画のみ）拡大率を縦横別々に指定する機能を追加
-・スプライトシートで範囲を指定したアニメ機能を追加
-
-[ピクチャ移動 コマンド]
-・（通常描画のみ）拡大率を縦横別々に指定する機能を追加
-
-[文字列ピクチャの表示 コマンド]
-・文字列の変数指定を追加
-
-[条件分岐 コマンド]
-・ファイル出力可能 の判定を追加
-
-[ロードの実行 コマンド]
-・暗転を無効にするオプションを追加
-
-
-
-Game Engine (English Version)
-
-[RPG_RT.ini]
-Added a new item to the RPG_RT section.
-
-Encoding=(Number)
-
-*Currently it is only relevant for text file IO. 
-*The default value is 0.
-
-
-[System]
-Added the ability to set all thread locales to the system default at startup.
-
-
-
-@> 修正: 
-ゲームエンジン
-
-[ロード]
-・変更したチップセットが反映されていなかったのを修正
-
-[効果音]
-・ゲームリセット直前に鳴っていたwaveファイルの制御が正しくなかったのを修正
-
-[タイトルロゴ]
-・ウィンドウサイズが既定より小さいとき、正しく表示されていなかったのを修正
-
-[ピクチャ]
-・ゲームリセットで直前に使われていた同一IDピクチャのエフェクト等を引き継ぐことがあったのを修正
-
-[マップ]
-・敵出現歩数が25のとき、敵が出現しなくなっていたのを修正
-
-[ゲームのオプション設定 コマンド]
-・FatalMix -> テストプレイ状態を変更しない でもテストプレイが有効になっていたのを修正
-
-[文字列変数の操作 コマンド]
-・分割操作で対象または検索文字列と出力先が同一変数のとき挙動が正しくなかったのを修正
-・検索操作で開始位置の扱いが正しくなかったのを修正
-・サイズの大きいファイルを読み込むとエラーが出ていたのを修正
-
-[主人公の名前変更 コマンド]
-[主人公の肩書き変更 コマンド]
-・空文字列を指定したとき、セーブデータに反映されていなかったのを修正
-
-[職業の変更 コマンド]
-・特殊技能を覚えた状態で二度以上実行したときにエラーが出る可能性があったのを修正
-
-[ピクチャ表示 コマンド]
-・サイズの大きいPNGファイルを読み込むとエラーが出ていたのを修正
-・リセットやロード時に縦の拡大率が初期化されていなかったのを修正
-
-[ピクチャ移動 コマンド]
-・残り時間を変更しない移動で内容が更新されないケースがあったのを修正
-
-[文字列ピクチャの表示 コマンド]
-・制御文字の扱いを修正
-
-[ピクチャ編集（チップ） コマンド]
-・単一IDで下層チップを描画するとき、チップIDが正しく反映されていなかったのを修正
-・ウェイト系処理のあとに実行すると編集内容が反映されないケースがあったのを修正
-
-[ゲーム情報の取得 コマンド]
-・インタプリタの実行行が階層を遡れていなかったのを修正
-
-
-~[]
-●2021/08/09
-[修正]
-・ゲームエンジン
-    セーブ:
-    実行中の並列処理のイベントが含まれるとき、内容を変更してもロード後に反映されていなかったのを修正
-
-    システム:
-    特定条件でゲームリセット後の暗転が解除されないことがあったのを修正
-
-    文字列ピクチャ:
-    サイズの自動計算が正しくないケースがあったのを修正
-
-    メッセージウィンドウ:
-    表示行数の計算が正しくなかったのを修正
-
-    画像:
-    32bit形式で透過が効いていなかったのを修正
-
-    セーブ:
-    マップイベント/乗り物の向きが正しく保存されていなかったのを修正
-    ロード時にマップイベントの画像変更が正しく反映されないことがあったのを修正
-
-    文章ウィンドウ -> 選択肢:
-    1ステップ中に複数回選択されるとエラーが出ていたのを修正
-
-    変数操作式:
-    左辺が範囲のとき、対象範囲が正しく処理されていなかったのを修正
-
-    マップイベント:
-    グラフィック固定でも向き固定解除が有効だったのを修正
-
-    キー入力の処理EXコマンド:
-    マウスホイールの状態が取得できていなかったのを修正
-
-    システム機能の制御コマンド:
-    セーブ/パーティメニューの許可不許可が反転していたのを修正
-
-    文字列変数の操作 コマンド -> ファイル入出力:
-    パス内に2バイト文字を含むとき、不正なパス扱いされていたのを修正
-
-    戦闘コマンドの変更 コマンド:
-    指定値が正しく解釈されていなかったのを修正
-    
-    ゲーム情報の取得 コマンド:
-    チップIDの取得で引数の扱いが間違っていたのを修正
-
-    文字列ピクチャ コマンド:
-    不正確な制御文字の扱いを修正
-
-
-[追加変更]
-・ゲームエンジン
-    用語:
-    EasyRPG独自の追加項目に一部対応(ID: 203~216)
-    
-    変数の操作コマンド:
-    アクター/メンバーの項目に「次のレベルに必要な経験値」を追加
-
-    文字列変数の操作 コマンド -> ファイル入出力:
-    「Text」フォルダ以下のサブフォルダに対応
-    「Text」フォルダ及びサブフォルダの自動生成機能を追加
-    
-    キャラクターのフラッシュ コマンド:
-    引数の変数指定に対応
-
-    [繰り返しの処理 コマンド:
-    マップイベントの列挙を追加
-
-    ゲーム情報の取得 コマンド:
-    現在マップのチップセットID の項目を追加
-    顔グラ の項目を追加
-    歩行グラ の項目を追加
-    カメラ位置 の項目を追加
-
-    条件分岐 コマンド:
-    指定のマップイベントが存在するかどうかの項目を追加
-
-    ピクチャ編集(タイル) コマンド:
-    新規追加
-
-    ピクチャ編集 コマンド:
-    透明状態の値を無視するオプションを追加
-    
-
-~[]
-●2021/05/30
-[修正]
-・ゲームエンジン
-    文章ウィンドウ: 
-    フィールドでのレベルアップメッセージが正しく処理されないケースがあったのを修正
-    カスタムファイルの読み込みがうまくいっていなかったのを修正
-    
-    ピクチャ:
-    キャッシュが解放されないケースがあったのを修正
-    
-    セーブ: 
-    セーブが短時間で何度も実行されたとき続行確認が正しく行われていなかったのを修正
-    主人公が上を向いているとき、セーブデータに反映されていなかったのを修正
-    
-    パーティメニュー: 
-    特殊技能を発動するアイテムを使用するとエラーが出ていたのを修正
-    ステータス画面で現在MPの値が正しくなかったのを修正
-    固定の項目名が英語表記になっていたのを修正
-    
-    指定位置のイベントID取得コマンド:
-    同一座標のイベントIDの優先順位が正しくなかったのを修正
-    
-    画面遷移:
-    上下ランダムブロック、ズームが正しくなかったのを修正
-    
-    タイトル画面:
-    タイトルロゴ表示中に終了した時、エラー落ち状態になっていたのを修正
-    
-
-[追加変更]
-・ゲームエンジン
-    ゲーム情報の取得コマンド:
-    「実行中のイベント情報」の項目を追加
-    
-    変数の操作コマンド:
-    オペランドに Lerp を追加
-    オペランドに Sum を追加
-    オペランドに Amin を追加
-    オペランドに Amax を追加
-    
-    変数配列の操作コマンド:
-    操作に参照外しを追加
-    ソート操作に連動する配列指定オプションを追加
-
-
-
-~[]
-●2021/05/19
-[修正]
-・エディタ
-    新しい変数操作フォームでプレイヤーのオペランドに余計な項目（マップID）が入っていたのを削除
-    
-
-[追加変更]
-・エディタ
-    イベントコマンドのテキスト化処理を刷新    
-    TPCとの連携機能を追加        
-
-・ゲームエンジン
-    全内容更新
-    「文字列変数の操作」コマンドを追加
-    「ゲーム情報の取得」コマンドを追加
-    「ピクチャの編集」コマンドを追加
-    「画像の出力」コマンドを追加
-    「キャラの動作追加」コマンドを追加
-    他変更多数
-    
-
-    
-~[]
-●2021/04/14
-[修正]
-・エディタ
-    「ピクチャ表示」コマンドの編集フォーム操作でエラーが出ることがあったのを修正
-    「文字列ピクチャ」コマンドの編集フォームで定数で0以下のサイズに設定してプレビューするとエラーが出ていたのを修正
-    未対応のコマンドの行が正しく処理されていなかったのを修正
-
-
-[追加変更]
-・エディタ
-    次回更新の準備（コマンド作成/編集の外部連携）
-
-
-~[]
-●2020/01/28
-[修正]
-・ゲームエンジン
-    「変数の操作」コマンドの式で変数番のスイッチ/変数の参照が正しく動作しなかったのを修正
-    「変数の操作」コマンドの式で組み込み関数のsin/cosを使うとエラーが出る場合があったのを修正
-    
-・エディタ
-    バージョン表記が実際のものと異なっていたのを修正
-    「変数の操作」コマンドの式で変数番のスイッチ/変数への代入が構文エラー扱いになっていたのを修正
-
-
-~[]
-●2020/01/26
-[修正]
-・ゲームエンジン
-    地形設定でキャラの1/2または1/3を半透明表示にしたときに描画が乱れていたのを修正
-    「変数配列の操作」等の追加コマンドで現在の上限+1番の変数を使ったときにエラーが出る可能性があったのを修正
-    
-・エディタ
-    「ピクチャの移動」コマンドで、定数値での座標指定にマイナスの値が入力できなかったのを修正
-    バトルイベントで「変数の操作」コマンドを編集するとき敵キャラの項目が出ていなかったのを修正
-
-・その他
-    同梱テキストの記述ミスを修正
-    
-    
-[追加変更]
-・エディタ・ゲームエンジン
-    「変数の操作」コマンドの対象とオペランドに式の項目を追加
-    「変数の操作」コマンドのオペランド「イベント」にイベントIDの項目を追加
-    
-・エディタ
-    オプションに「変数の操作」コマンドの編集フォームを選択する項目を追加
-    
-
-~[]
-●2019/11/03   
-[修正]
-・ゲームエンジン
-    デフォ戦開始時のフラッシュが正しく描画されていなかったのを修正
-    デフォ戦でピクチャのレイヤーが正しく反映されていなかったのを修正
-    デフォ戦でマップ限定のピクチャが表示されていたのを修正
-    「ピクチャの表示」「ピクチャの移動」コマンドで回転/角度指定をおこなうとピクチャが真っ黒に描画されることがあったのを修正
-    非アクティブ時動作を有効にしているとき、F12操作がアクティブ状態でなくても入力されていたのを修正
-    非アクティブ状態でキーコード直接指定による入力を処理するとエラーが出ていたのを修正
-    (pf版のみ)キー入力の処理でテンキーの1/3/5/7/9が効かなくなっていたのを修正
-
-・エディタ
-    日本語版の「文章の表示」「注釈」コマンドで2行目以降のコマンド名を修正
-    「ピクチャの移動」コマンドで移動時間がマイナスのときの表記を修正
-    
-
-[追加変更]
-・エディタ・ゲームエンジン
-    戦闘アニメの効果音にoggを使用できるように変更
-    「コマンドの呼び出し」コマンドを追加
-    「ゲームのオプション設定」コマンドにフレームスキップの項目を追加
-    「ピクチャの表示」コマンドに原点の項目を追加、いくつかの項目に変数番変数での値指定を追加
-    「ピクチャの移動」コマンドに原点の項目を追加、いくつかの項目に変数/変数番変数での値指定を追加
-    
-
-~[]
-●2019/10/21     
-[修正]
-・ゲームエンジン
-    デフォ戦を開始するとエラーが出ていたのを修正
-    「ピクチャのID変更」コマンドで範囲外IDの扱いが正しくないケースがあったのを修正
-
-※エディタのバージョンは「191020」で据え置き
-
-
-~[]
-●2019/10/20
-[修正]
-・ゲームエンジン
-    「マップの書き換え」コマンドでオートタイルを無効にしたときの下層タイル範囲書き換えが上層として処理されていたのを修正
-
-・エディタ
-    「文字列ピクチャの表示」コマンドでプレビューの画像が実際より縦横1px大きくなる場合があったのを修正
-    
-・エディタ・ゲームエンジン
-    「文字列ピクチャの表示」コマンドで外字のドットがずれていたのを修正
-    
-[追加変更]
-・エディタ
-    一部のテキスト入力コントロールの文字数上限を引き上げ
-    
-・エディタ・ゲームエンジン
-    「条件分岐」コマンドに「ウィンドウがアクティブ」の項目を追加
-    「ピクチャの消去」コマンドに「変数番変数/変数範囲/全て」の項目を追加
-    「ピクチャのID変更」コマンドを追加
-    「ゲームのオプション設定」コマンドを追加
-
-
-~[]
-●2019/10/07
-
-[修正]
-・ゲームエンジン
-    1フレームに実行可能なコマンド数が表記と異なっていたのを修正
-    「キー入力の処理EX」コマンドでジョイパッドの割り当て時にボタンの対応が表記と異なっていたのを修正
-    「マップの書き換え」コマンドで単体指定時の座標がずれていたのを修正
-    
-・エディタ・ゲームエンジン
-    「文字列ピクチャの表示」コマンドで12px未満のフォントサイズをグラデありで描画すると色がずれていたのを修正
-    
-[追加変更]
-・エディタ
-    マップイベント/データベース/動作指定フォームのキャンセルボタンの状態を変更するオプションを追加
-    一部の数値入力フォームの上下限を変更
-    一部のテキスト入力コントロールの文字数上限を引き上げ
-    
-    
-~[]
-●2019/09/20
-
-[修正]
-・ゲームエンジン
-    「キー入力の処理EX」コマンドでジョイパッドが無効なときに状態を取得すると変数の値が更新されていなかったのを修正
-    「マップの書き換え」コマンドで範囲指定の適用順が矩形の右下から左上になっていたのを修正
-    「画面の消去/表示」コマンドでモザイクが無効になっていたのを修正
-    「ムービーの再生」コマンド使用後にoggが再生されなくなっていたのを修正
-    「乗り物の位置を設定」コマンドでいずれかの乗り物搭乗時にプレイヤーごと別マップへ移動するとエラーが出ていたのを修正
-    ピクチャの角度指定でマイナスの値が逆方向に回転していなかったのを修正
-
-・エディタ
-    「マップの書き換え」コマンドでサンプルのIDが2箇所間違っていたのを修正
-    「マップの書き換え」コマンドを編集するときHの値の種類がWのものと同じに変わっていたのを修正
-
-[仮修正]
-・ゲームエンジン
-    ピクチャの回転/角度指定で偶数サイズの画像がずれて表示されていたのを仮修正
-
-[追加変更]
-・エディタ
-    単一CPUで動作させるオプションを追加
-    ヘルプメニューに拡張パッチのバージョンを表示
-
-・エディタ・ゲームエンジン
-    「変数の操作」コマンドのオペランドに拡張パッチのバージョンを追加
-    「条件分岐」コマンドにジョイパッドの有無判定を追加
-
-
-
-~[]
-●2019/09/04
-
-[修正]
-・ゲームエンジン：
-    「変数配列の操作」コマンドで特定条件でエラーが出ていたのを修正
-    「繰り返し処理」コマンドが並列処理で使用されているときなどにセーブをおこなうとまれにエラーが出ていたのを修正
-    「文字列ピクチャの表示」コマンドで色調を変更した場合に適用が1フレーム遅れていたのを修正
-    「職業の変更」コマンドを実行すると防御力と精神力の値が低下していたのを修正
-    
-[追加変更]
-・ゲームエンジン：
-    oggファイルの再生時に高負荷などを原因とした空回りが発生しないように変更
-    セーブ時にエラーが発生した場合にファイルへの書き込みをしないように変更
-    フォントの自動読み込みでオープンタイプ(.otf)のフォントに対応
-    「無効な主人公が指定されました」等のメッセージにIDや番号を付加
-    画面に表示可能な色数をハイカラー(65536色)からトゥルーカラー(16777216色)に変更
-    処理全般の高速化
-
-・エディタ：
-    マップサイズの縦横いずれかが通常の下限値(20x15)を下回るとき自動生成機能を外すように変更
-    
-・エディタ&ゲームエンジン：
-    「キー入力の処理EX」コマンドを追加
-    「マップの書き換え」コマンドを追加
-    「共有セーブの操作」コマンドを追加
-    「変数の操作」コマンドのオペランドに三項演算を追加
-    使用可能なフォントの種類を日本語版・英語版で共通になるように変更
-    データベースの状態で1番目のデータも編集できるように変更
-    データベースの状態に「対象の行動のみターンに数える」オプションを追加
-    
-
-
-~[]
-●2019/06/30
-
-[修正]
-・エディタ&ゲームエンジン：
-    「文字列ピクチャの表示」コマンドでフォントサイズが極端に小さいまたは画像サイズが極端に大きい場合にエラーが出ていたのを修正
-    
-・エディタ：
-    日本語版の「イベントの呼び出し」コマンドで「このイベント」が'This Event'のままだったのを修正
-    
-・ゲームエンジン：
-    並列処理されるコモンイベントで「ウェイト」コマンドでの指定時間2.0秒を超えるとき正しく設定されていなかったのを修正
-
-[追加変更]
-・エディタ：
-    コマンドビューのフォント変更機能を追加
-    「繰り返し処理」コマンドでインデックスを受け取る変数を表示するように変更
-    マップサイズの下限を1*1に変更
-    「プロジェクトを開く」のフォームサイズを変更
-    
-    
-
-~[]
-●2019/06/25
-
-[修正]
-・ゲームエンジン：
-    「オプション画面の呼び出し」コマンド経由で画面サイズを変更した際にマウス座標の倍率が再計算されていなかったのを修正
-    「戦闘処理の制御」コマンドでターゲティングの引数の値が間違っていたのを修正
-    「戦闘処理の制御」コマンドで呼び出されるイベント実行時に余計なフレーム経過がはさまれていたのを修正
-    「ピクチャ移動」コマンドで、スクロールに連動したピクチャを移動させたときの座標が正しくなかったのを修正
-    「変数の操作」コマンドで、変数番のスイッチで取得できる値が正しくなかったのを修正
-    デフォ戦で通常攻撃の対象が全体または味方側であった場合にエラーが出る問題を修正
-    
-[追加変更]
-・ゲームエンジン：
-    「ピクチャ表示」コマンドで引数が足りないときの消去条件および適用画面効果のデフォルトを変更（マップ移動で消去・フラッシュとシェイクの影響を受ける）
-    「変数の操作」コマンドのパフォーマンス改善
-    「条件分岐」コマンド等のブロックがスキップされる処理を軽量化
-    マップイベントの呼び出しを高速化
-
-    
-
-~[]
-●2019/05/26
-
-[修正]
-・エディタ&ゲームエンジン：
-    「accord.dll」がGoogle ドライブでウィルス判定を受ける問題を修正
-
-[追加変更]
-・ゲームエンジン：
-    コモンイベントの並列処理イベントの実行速度を改善
-    1コマンドあたりの実行コストを低減
-    ピクチャの回転描画の挙動を大幅改善
-    pf版のみイベントごとのフレーム内実行コマンド数上限を1万から20万に変更
-    フォントの読み込み機能を追加
-    
-・エディタ：
-    コマンドリストの編集機能を追加
-    「キャラクターの動作指定」コマンドでグラフィック変更の際、向きやパターンごとの画像を確認できるように変更
-    
-・エディタ&ゲームエンジン：
-    「戦闘情報の取得」コマンドを追加
-    「変数配列の操作」コマンドを追加
-    ピクチャの特殊効果に角度指定を追加
-    ピクチャの特殊効果とブレンドモードを分離（現時点では波形のみ併用不可）
-    「戦闘処理の制御」コマンドに項目「状態付与」「HP以外の能力値変動」を追加
-    「戦闘コマンドの変更EX」コマンドにパーティコマンド操作機能を追加
-    
-    
-
-~[]
-●2019/02/20
-
-[修正]
-・ゲームエンジン：
-    デフォ戦で戦闘タイプがBのとき、コマンド選択が正しく動作していなかったのを修正
-    デフォ戦で逃げられない設定の戦闘時に使用可能コマンドと不能なものの文字色が反転していたのを修正
-
-[変更]
-・ゲームエンジン：
-    デフォ戦で全ての戦闘コマンドを外したときの挙動を変更
-
-
-~[]
-●2019/02/17
-
-[修正]
-・ゲームエンジン：
-    変数操作のオペランドSin/Cosで、引数に0を指定したときエラーがでていたのを修正
-    「文字列ピクチャの表示」コマンドで影を有効にした上でサイズを自動算出すると縦横1pxずつ余分に大きかったのを修正
-
-・エディタ：
-    条件分岐のフォームで一部コントロールが重なっていたのを修正
-    「ピクチャの移動」コマンドフォームで画像反転を表すテキストが表示されていなかったのを修正
-
-
-[追加変更]
-・ゲームエンジン：
-    デフォ戦のダメージ上限を変数値の上限と同等に変更
-    精神/敏捷ステータスに倍増と半減の効果を重ねがけできるように変更
-
-・エディタ：
-    メインメニューに「バックアップ」を追加
-    条件分岐のフォームで左辺値「変数番のスイッチ」「変数番の変数」の並びを変更
-    コモンイベントとバトルイベントで異なるコマンドをペーストしたときの警告を非表示に変更
-    コモンイベントとバトルイベントで異なるコマンドを編集できるように変更
-    コモンイベントとバトルイベントで異なるコマンドリストを呼び出せるように変更
-    プログラムでエラーが発生したときにデータベースとマップデータの保存を中止するように変更
-    「特定環境で戦闘テストの起動に失敗する問題を修正するパッチ」の内容を内包
-    (&[https://rpgmaker.net/forums/topics/21525/?post=875459#post875459,https://rpgmaker.net/forums/topics/21525/?post=875459#post875459])
-    
-・エディタ&ゲームエンジン：
-    「ピクチャ情報の取得」コマンドを追加
-    「戦闘処理の制御」コマンドを追加
-    「ATBゲージの操作」コマンドを追加
-    「戦闘コマンドの変更EX」コマンドを追加    
-    「戦闘の処理」コマンドで戦闘開始前のフラッシュを無効化するオプションを追加
-    「変数操作」コマンドのオペランドSin/Cosに引数を1つ追加
-    敵キャラデータの項目に攻撃時の戦闘アニメを追加
-    コモンイベントの開始条件に「戦闘開始」を追加
-    コモンイベントの開始条件に「戦闘時に並列処理」を追加
-    
-    
-
-~[]
-●2019/01/22
-
-・ゲームエンジン：
-    生成した文字列ピクチャに対しピクチャの移動をおこなった後にセーブすると
-    ロード時にエラーが出ていたのを修正
-    (上記の条件に当てはまる190121版以前の文字列ピクチャはロード時に文字の描画をスキップするように変更、
-    190122以降で作成されたセーブデータは正常にセーブ/ロード可能)
-
-
-~[]
-●2019/01/21
-
-・エディタ：
-    文字列ピクチャで一覧表示による変数選択ができなくなっていたのを修正
-    
-・ゲームエンジン：
-    文字列ピクチャで特殊文字の描画がスキップされることがあったのを修正
-    
-    
-    
-~[]
-●2019/01/20
-
-・エディタ(日本語版)：
-    職業の変更コマンドの翻訳漏れを補完
-
-・ゲームエンジン：
-    条件分岐「セーブデータが存在する」で正しく判定されていなかったのを修正
-
-    
-
-~[]
-●2019/01/19
-
-・エディタ：
-    文字列ピクチャのプレビュー更新にショートカットキーを追加
-
-・ゲームエンジン：
-    終了時にエラーが出ていたのを修正
-
-
-
-~[]
-●2019/01/19
-
-・エディタ：
-    変数操作のフォームで定数範囲指定の上限が9999になっていたのを修正(→999999)
-    条件分岐で「n番の変数が***」を選択していると、編集操作を行っても新規作成と同様の値が設定されてしまう問題を修正
-
-・ゲームエンジン：
-    変数操作で主人公の現在経験値を取得しようとすると現在レベルが返っていたのを修正
-
-・エディタ・ゲームエンジン：
-    セキュリティソフトによる誤検知対策に追加セクションの配置を変更
-    文字列ピクチャの表示コマンドを追加
-
-
-    
-~[]
-●2018/12/09
-
-    ピクチャの波形描画が無効になっていたのを修正
-    マップイベント更新のタイミングを変更しないバージョンを追加
-    コモンイベントの呼び出しを高速化
-    OSの言語設定が日本語以外の状態で日本語版を使用したとき文字化けするのを修正        
-    変数の操作、条件分岐、イベントの呼び出し、繰り返し処理、繰り返し処理の中断コマンドそれぞれの機能を追加修正
-    
-
-
-~[]
-●2018/08/09
-
-    動作テスト版公開
-
+//{
+
+<div><h2 id="更新履歴" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="更新履歴" href="#更新履歴" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>更新履歴</h2><h3 id="2024/10/28" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2024/10/28" href="#2024/10/28" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2024/10/28</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">プラグイン機能を搭載</li><li style="display: list-item; line-height: 1.4em;">テストプレイにSingleProcAffinityを適用しないように変更</li><li style="display: list-item; line-height: 1.4em;">テストプレイ中にエディタをポーズさせないオプションを追加</li><li style="display: list-item; line-height: 1.4em;">(Shift+)マウスホイールでマップのスクロール機能を追加</li><li style="display: list-item; line-height: 1.4em;">Ctrl+マウスホイールでマップの拡縮機能を追加＋拡大上限の引き上げ</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">オーディオ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">oggのtick取得で値が正確でなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文章</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">職業由来の特技習得時、名称の代わりに説明が表示されていたのを修正</li><li style="display: list-item; line-height: 1.4em;">半角文字の標準描画速度が1/2になっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">全角文字の速度指定が2以上のとき、ウェイト値が正しくなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">パーティメニュー</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">MP割合回復アイテム使用時、参照値が間違っていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">セーブデータ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">遠景の変更がロード時に復元されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">データベースの内容が保存時と異なるとき、データの読み込みが正しく行われない可能性があったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">デフォ戦</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">文章ウィンドウの位置が解像度やオリジン変更に対応していなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">タイプBの小ウィンドウで一部UIが小さくなっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">プレイヤー選択時のフラッシュが従来より短くなっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">能力値低下の特技が正しく機能していなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">MPダメージが威力に関わらず空振り扱いになっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">ランダムエンカウント後のコモンイベント呼び出しが無効になっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">味方のいずれかが特殊技能の発動待ちのあいだに戦闘が終わるとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">味方のAI行動において通常攻撃の比率が高くなっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">色調変更時に、遠景への影響が次の戦闘にも残っていたのを修正</li><li style="display: list-item; line-height: 1.4em;">モーションに拡張を指定した特技の使用中に戦闘が中断されたときエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">魔法反射時、アニメーションが先頭キャラ固定になっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">混乱による自滅時、戦闘不能アニメがループしていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">装備</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">武器に設定されている状態操作が防具のものと同様に扱われていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">タイトル/セーブ・ロード シーン</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ウィンドウの透過が有効になっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数操作式</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">敵キャラに関する組み込み関数が0を返していたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">主人公の顔グラフィック</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">現在のファイル内インデックスが初期値と同じかつ変更後のファイル名が初期値と同じ場合に変更がキャンセルされていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数配列の操作 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">シャッフル操作で対象が指定数より1少なくなっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム情報の取得 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">顔グラ / 歩行グラ の出力先が、それぞれtとvで入れ替わっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列変数の操作 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">正規表現で得た部分文字列にnull終端が含まれていたのを修正</li><li style="display: list-item; line-height: 1.4em;">1行切り出しが範囲操作に対応していなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">テキスト出力でshift_jisを指定するとutf16で出力されていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">戦闘処理の制御 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ターゲティングで変更した値によってはエラーが出る可能性があったのを修正</li><li style="display: list-item; line-height: 1.4em;">状態付与イベント中で状態付与をおこなうとエラーが出ていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ムービーの再生 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">読み込みに失敗したとき、処理が進まなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">画面のスクロール コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">座標指定時、主人公の位置が変わると正しく設定されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ編集 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">スプライトシートへの編集操作時にピクセルが不正になるケースがあったのを修正</li><li style="display: list-item; line-height: 1.4em;">スプライトシートに対するピクセル操作をセーブすると正しく復元されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">シャットダウン コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">実行からアプリ終了までの間に処理が動く可能性があったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">コマンドの呼び出し コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">引数の値を直接指定するとき正しく解釈されないことがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">キャラクターの動作追加 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">スイッチ操作/グラフィック変更/効果音再生が設定値によってはうまく機能していなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">セーブ画面の呼び出し(システム機能の呼び出し) コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">スクリーンモード設定が正しく機能していなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャの表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">末尾の改行が無視されていたのを修正</li></ul>
+</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">Fixed</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">Terms<ul>
+<li style="display: list-item; line-height: 1.4em;">Fixed incorrect word order in get item messages.</li></ul>
+</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">アプリケーション</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><strong><em>64bit化</em></strong></li><li style="display: list-item; line-height: 1.4em;">im版とpf版を統合</li><li style="display: list-item; line-height: 1.4em;">コマンドライン引数の1番目または4番目でプロジェクトディレクトリを指定する機能を追加</li><li style="display: list-item; line-height: 1.4em;">実行ファイルの説明欄にマニアクスのバージョン情報を追加</li><li style="display: list-item; line-height: 1.4em;">起動時の初期化とロゴ表示を並列化</li><li style="display: list-item; line-height: 1.4em;">素材暗号化に対応</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">メディアオプション</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">レジストリキーが存在しなければ作成するように変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">フォルダ構成</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">Save.lgs</code>および<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">Save\*\*.lsd</code>が<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">SaveData</code>フォルダに格納されていても動作するように変更</li><li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">SaveData</code>フォルダが存在するとき、そこをセーブデータの保存先にするように変更</li><li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">RPG_RT.lmt</code>および<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">Map\*\*\*\*.lmu</code>が<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">Map</code>フォルダに格納されていても動作するように変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">オーディオ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">mp3の再生方法をストリーミング形式に変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">システムグラフィック</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">テキストカラーの個数制限を撤廃し、水平/垂直方向に任意数追加できるよう変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">外字フォント</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">外字の個数制限を撤廃し、水平/垂直方向に任意数追加できるよう変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">デバッグウィンドウ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">スイッチ/変数の表示数を名前付きの数or確保数いずれか大きいほうに変更</li><li style="display: list-item; line-height: 1.4em;">強制終了時、可能であればメッセージを表示するように変更</li><li style="display: list-item; line-height: 1.4em;">テストプレイが有効の場合、進行不能エラーまたはコマンドからのポーズ時にイベントの実行状況を表示する機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文章</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">テキストカラー指定で　<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\c[x,y]</code>　形式に対応</li><li style="display: list-item; line-height: 1.4em;">外字指定で　<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">$[n]</code> <code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">$[x,y]</code>　形式に対応</li><li style="display: list-item; line-height: 1.4em;">フォントサイズがデフォルト以外のとき、文字のスキンが正しく使われていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">制御文字<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\E[]</code>を導入</li><li style="display: list-item; line-height: 1.4em;">制御文字に<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\W[n]</code>を追加（nフレームウェイト）</li><li style="display: list-item; line-height: 1.4em;">制御文字に<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\F[a,b,c]</code>を追加（顔グラフィックをファイルa,ファイル内インデックスbに反転状態cで変更）</li><li style="display: list-item; line-height: 1.4em;">制御文字の引数内の制御文字は事前展開しないように変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">テキスト</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">外字に当てはまらないときの「$」記号をプレーンテキストとして扱うように変更</li><li style="display: list-item; line-height: 1.4em;">制御文字の記法を拡張</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">パーティメニュー</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">コマンドが1つもないとき、ウィンドウ自体を描画しないよう変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">スプライトシート使用時、エフェクトを表示範囲だけにかけるよう変更</li><li style="display: list-item; line-height: 1.4em;">回転,波形,角度指定描画で縦横別の拡大率に対応</li><li style="display: list-item; line-height: 1.4em;">フィールド上での描画を並列化</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">文字色変更を含むピクチャをセーブするとロード時にテキストが正しく復元されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">デフォ戦</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">特殊技能使用時、発動者のモーションとして戦闘アニメも指定できるように変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">画面のスクロール コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">スクロールをその場で強制実行するオプションを追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャの表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">拡大率を考慮した原点指定オプションを追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャの移動 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">拡大率を考慮した原点指定オプションを追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">イベントの消去 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">消去状態の復帰および対象の指定機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">イベントの位置を交換 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">対象の変数指定機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャの表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">末尾の改行が無視されていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数配列の操作 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">連動シャッフルを追加</li><li style="display: list-item; line-height: 1.4em;">コピー(←)を追加</li><li style="display: list-item; line-height: 1.4em;">値の繰り返し代入を追加</li><li style="display: list-item; line-height: 1.4em;">リバースを追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列変数の操作 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">代入/連結操作でオペランドに「説明」の項目を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲームのオプション設定 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">文章ウィンドウの顔グラのサイズ指定を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム情報の取得 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">画面の揺れ幅の項目を追加</li><li style="display: list-item; line-height: 1.4em;">演奏中のBGMの項目を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">顔グラフィックの設定 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">アニメーション指定機能を追加</li></ul>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">文章処理の制御 コマンド<ul>
+<li style="display: list-item; line-height: 1.4em;">新規追加</li></ul>
+</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">画面のズーム コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">新規追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">スクリプト コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">新規追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">コンソール コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">新規追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">セーブ/ロード画面</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ウィンドウサイズ変更に合わせて表示数を増減するように変更</li><li style="display: list-item; line-height: 1.4em;">スクロール速度を上昇</li><li style="display: list-item; line-height: 1.4em;">スクロール中にも操作可能に変更</li><li style="display: list-item; line-height: 1.4em;">マウス操作に対応</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">その他</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">タイトルシーン無効 かつ 非テストプレイのときエラーが出る可能性があったのを修正</li><li style="display: list-item; line-height: 1.4em;"><code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">$[,]</code>形式の外字参照および<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\v[]</code>や<code style="border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; word-wrap: break-word; border: 1px solid rgb(204, 204, 204); padding: 0px 5px; margin: 0px 2px;font-family: Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 85%; padding: 0.2em 0.5em; border: 1px solid rgb(239, 239, 239); background-color: rgba(0, 0, 0, 0.0196078);">\t[]</code>による変数参照を文章ウィンドウ以外でも有効化</li></ul>
+</li></ul>
+</li></ul><h6 id="共通" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="共通" href="#共通" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>共通</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">オーディオ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">oggのループ再生でノイズが混じることがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">用語</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「経験値獲得」メッセージに項目を追加</li><li style="display: list-item; line-height: 1.4em;">「アイテム獲得」メッセージに項目を追加</li><li style="display: list-item; line-height: 1.4em;">「レベルアップ」メッセージに項目を追加</li><li style="display: list-item; line-height: 1.4em;">「特殊技能習得」メッセージに項目を追加</li><li style="display: list-item; line-height: 1.4em;">「敵の行動」メッセージの編集機能を追加</li><li style="display: list-item; line-height: 1.4em;">メニューの並べ替え確認メッセージの編集機能を追加</li><li style="display: list-item; line-height: 1.4em;">ステータス画面の項目名の編集機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">パーティメニュー</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ゲーム終了の項目を非表示にできるよう変更</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">システム2</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">タイトルシーンの制御機能を追加</li><li style="display: list-item; line-height: 1.4em;">セーブ/ロードシーンの制御機能を追加</li><li style="display: list-item; line-height: 1.4em;">文章ウィンドウのフォント、ウィンドウサイズ、顔グラ矩形、テキスト開始位置、テキストスペースの設定を追加</li></ul>
+</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2021/10/10" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2021/10/10" href="#2021/10/10" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2021/10/10</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">特殊技能</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「命中率を計算」オプションを追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数/スイッチ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">TPC連携での名称編集機能(コマンド編集画面でF4, F5)を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">コマンド編集</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">TPC連携でFooty2を採用</li></ul>
+</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ロード</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">変更したチップセットが反映されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">効果音</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ゲームリセット直前に鳴っていたwaveファイルの制御が正しくなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">タイトルロゴ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ウィンドウサイズが既定より小さいとき、正しく表示されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ゲームリセットで直前に使われていた同一IDピクチャのエフェクト等を引き継ぐことがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">マップ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">敵出現歩数が25のとき、敵が出現しなくなっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲームのオプション設定 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">FatalMix -&gt; テストプレイ状態を変更しない でもテストプレイが有効になっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列変数の操作 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">分割操作で対象または検索文字列と出力先が同一変数のとき挙動が正しくなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">検索操作で開始位置の扱いが正しくなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">サイズの大きいファイルを読み込むとエラーが出ていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">主人公の名前変更 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">主人公の肩書き変更 コマンド</li><li style="display: list-item; line-height: 1.4em;">空文字列を指定したとき、セーブデータに反映されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">職業の変更 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">特殊技能を覚えた状態で二度以上実行したときにエラーが出る可能性があったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">サイズの大きいPNGファイルを読み込むとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">リセットやロード時に縦の拡大率が初期化されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ移動 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">残り時間を変更しない移動で内容が更新されないケースがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャの表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">制御文字の扱いを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ編集（チップ） コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">単一IDで下層チップを描画するとき、チップIDが正しく反映されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">ウェイト系処理のあとに実行すると編集内容が反映されないケースがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム情報の取得 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">インタプリタの実行行が階層を遡れていなかったのを修正</li></ul>
+</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列変数の操作 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ファイル出力のフォルダ制限を解除</li><li style="display: list-item; line-height: 1.4em;">部分削除文字列のオペランドを追加</li><li style="display: list-item; line-height: 1.4em;">正規表現による置換文字列のオペランドを追加</li><li style="display: list-item; line-height: 1.4em;">正規表現による検索操作を追加</li><li style="display: list-item; line-height: 1.4em;">正規表現による抽出操作を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">戦闘アニメの表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">再生バッファの選択機能を追加</li><li style="display: list-item; line-height: 1.4em;">反転再生機能を追加</li><li style="display: list-item; line-height: 1.4em;">位置の設定方法にピクチャ追従、座標指定、変数束縛を追加</li><li style="display: list-item; line-height: 1.4em;">キャッシュ保持をデフォルトで無効化</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲームのオプション設定 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">戦闘アニメの同時表示数の上限変更を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">（通常描画のみ）拡大率を縦横別々に指定する機能を追加</li><li style="display: list-item; line-height: 1.4em;">スプライトシートで範囲を指定したアニメ機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ移動 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">（通常描画のみ）拡大率を縦横別々に指定する機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャの表示 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">文字列の変数指定を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">条件分岐 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">ファイル出力可能 の判定を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ロードの実行 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">暗転を無効にするオプションを追加</li></ul>
+</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">Added (English Version)</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">RPG_RT.ini</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">Added a new item to the RPG_RT section.<br style="clear: both;">
+  Encoding=(Number)<br style="clear: both;">
+  *Currently it is only relevant for text file IO.<br style="clear: both;">
+  *The default value is 0.</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">System</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">Added the ability to set all thread locales to the system default at startup.</li></ul>
+</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2021/08/09" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2021/08/09" href="#2021/08/09" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2021/08/09</h3><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">セーブデータ<ul>
+<li style="display: list-item; line-height: 1.4em;">実行中の並列処理のイベントが含まれるとき、内容を変更してもロード後に反映されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">システム</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">特定条件でゲームリセット後の暗転が解除されないことがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">サイズの自動計算が正しくないケースがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">メッセージウィンドウ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">表示行数の計算が正しくなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">画像:</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">32bit形式で透過が効いていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">セーブ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">マップイベント/乗り物の向きが正しく保存されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">ロード時にマップイベントの画像変更が正しく反映されないことがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文章ウィンドウ -&gt; 選択肢</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">1ステップ中に複数回選択されるとエラーが出ていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数操作式</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">左辺が範囲のとき、対象範囲が正しく処理されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">マップイベント</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">グラフィック固定でも向き固定解除が有効だったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">キー入力の処理EXコマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">マウスホイールの状態が取得できていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">システム機能の制御コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">セーブ/パーティメニューの許可不許可が反転していたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列変数の操作 コマンド -&gt; ファイル入出力</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">パス内に2バイト文字を含むとき、不正なパス扱いされていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">戦闘コマンドの変更 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">指定値が正しく解釈されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム情報の取得 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">チップIDの取得で引数の扱いが間違っていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列ピクチャ コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">不正確な制御文字の扱いを修正</li></ul>
+</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">用語</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">EasyRPG独自の追加項目に一部対応(ID: 203~216)</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数の操作コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">アクター/メンバーの項目に「次のレベルに必要な経験値」を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文字列変数の操作 コマンド -&gt; ファイル入出力</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「Text」フォルダ以下のサブフォルダに対応</li><li style="display: list-item; line-height: 1.4em;">「Text」フォルダ及びサブフォルダの自動生成機能を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">キャラクターのフラッシュ コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">引数の変数指定に対応</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">繰り返しの処理 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">マップイベントの列挙を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム情報の取得 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">現在マップのチップセットID の項目を追加</li><li style="display: list-item; line-height: 1.4em;">顔グラ の項目を追加</li><li style="display: list-item; line-height: 1.4em;">歩行グラ の項目を追加</li><li style="display: list-item; line-height: 1.4em;">カメラ位置 の項目を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">条件分岐 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">指定のマップイベントが存在するかどうかの項目を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ編集(タイル) コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">新規追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ編集 コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">透明状態の値を無視するオプションを追加</li></ul>
+</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2021/05/30" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2021/05/30" href="#2021/05/30" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2021/05/30</h3><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">文章ウィンドウ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">フィールドでのレベルアップメッセージが正しく処理されないケースがあったのを修正</li><li style="display: list-item; line-height: 1.4em;">カスタムファイルの読み込みがうまくいっていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ピクチャ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">キャッシュが解放されないケースがあったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">セーブ</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">セーブが短時間で何度も実行されたとき続行確認が正しく行われていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">主人公が上を向いているとき、セーブデータに反映されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">パーティメニュー</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">特殊技能を発動するアイテムを使用するとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">ステータス画面で現在MPの値が正しくなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">固定の項目名が英語表記になっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">指定位置のイベントID取得コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">同一座標のイベントIDの優先順位が正しくなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">画面遷移</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">上下ランダムブロック、ズームが正しくなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">タイトル画面</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">タイトルロゴ表示中に終了した時、エラー落ち状態になっていたのを修正</li></ul>
+</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">ゲーム情報の取得コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「実行中のイベント情報」の項目を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数の操作コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">オペランドに Lerp を追加</li><li style="display: list-item; line-height: 1.4em;">オペランドに Sum を追加</li><li style="display: list-item; line-height: 1.4em;">オペランドに Amin を追加</li><li style="display: list-item; line-height: 1.4em;">オペランドに Amax を追加</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変数配列の操作コマンド</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">操作に参照外しを追加</li><li style="display: list-item; line-height: 1.4em;">ソート操作に連動する配列指定オプションを追加</li></ul>
+</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2021/05/19" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2021/05/19" href="#2021/05/19" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2021/05/19</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">新しい変数操作フォームでプレイヤーのオペランドに余計な項目（マップID）が入っていたのを削除</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">イベントコマンドのテキスト化処理を刷新</li><li style="display: list-item; line-height: 1.4em;">TPCとの連携機能を追加</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">全内容更新</li><li style="display: list-item; line-height: 1.4em;">「文字列変数の操作」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「ゲーム情報の取得」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの編集」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「画像の出力」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「キャラの動作追加」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">他変更多数</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2021/04/14" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2021/04/14" href="#2021/04/14" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2021/04/14</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「ピクチャ表示」コマンドの編集フォーム操作でエラーが出ることがあったのを修正</li><li style="display: list-item; line-height: 1.4em;">「文字列ピクチャ」コマンドの編集フォームで定数で0以下のサイズに設定してプレビューするとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">未対応のコマンドの行が正しく処理されていなかったのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">次回更新の準備（コマンド作成/編集の外部連携）</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2020/01/28" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2020/01/28" href="#2020/01/28" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2020/01/28</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">バージョン表記が実際のものと異なっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドの式で変数番のスイッチ/変数への代入が構文エラー扱いになっていたのを修正</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドの式で変数番のスイッチ/変数の参照が正しく動作しなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドの式で組み込み関数のsin/cosを使うとエラーが出る場合があったのを修正</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2020/01/26" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2020/01/26" href="#2020/01/26" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2020/01/26</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「ピクチャの移動」コマンドで、定数値での座標指定にマイナスの値が入力できなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">バトルイベントで「変数の操作」コマンドを編集するとき敵キャラの項目が出ていなかったのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">オプションに「変数の操作」コマンドの編集フォームを選択する項目を追加</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">地形設定でキャラの1/2または1/3を半透明表示にしたときに描画が乱れていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「変数配列の操作」等の追加コマンドで現在の上限+1番の変数を使ったときにエラーが出る可能性があったのを修正</li></ul>
+</li></ul><h6 id="エディタ・ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ・ゲームエンジン" href="#エディタ・ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ・ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドの対象とオペランドに式の項目を追加</li><li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドのオペランド「イベント」にイベントIDの項目を追加</li></ul>
+</li></ul><h6 id="その他" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="その他" href="#その他" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>その他</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">同梱テキストの記述ミスを修正</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/11/03" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/11/03" href="#2019/11/03" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/11/03</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">日本語版の「文章の表示」「注釈」コマンドで2行目以降のコマンド名を修正</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの移動」コマンドで移動時間がマイナスのときの表記を修正</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">デフォ戦開始時のフラッシュが正しく描画されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">デフォ戦でピクチャのレイヤーが正しく反映されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">デフォ戦でマップ限定のピクチャが表示されていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの表示」「ピクチャの移動」コマンドで回転/角度指定をおこなうとピクチャが真っ黒に描画されることがあったのを修正</li><li style="display: list-item; line-height: 1.4em;">非アクティブ時動作を有効にしているとき、F12操作がアクティブ状態でなくても入力されていたのを修正</li><li style="display: list-item; line-height: 1.4em;">非アクティブ状態でキーコード直接指定による入力を処理するとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">(pf版のみ)キー入力の処理でテンキーの1/3/5/7/9が効かなくなっていたのを修正</li></ul>
+</li></ul><h6 id="エディタ・ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ・ゲームエンジン" href="#エディタ・ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ・ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">戦闘アニメの効果音にoggを使用できるように変更</li><li style="display: list-item; line-height: 1.4em;">「コマンドの呼び出し」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「ゲームのオプション設定」コマンドにフレームスキップの項目を追加</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの表示」コマンドに原点の項目を追加、いくつかの項目に変数番変数での値指定を追加</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの移動」コマンドに原点の項目を追加、いくつかの項目に変数/変数番変数での値指定を追加</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/10/21" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/10/21" href="#2019/10/21" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/10/21</h3><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">デフォ戦を開始するとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「ピクチャのID変更」コマンドで範囲外IDの扱いが正しくないケースがあったのを修正</li></ul>
+</li></ul><p style="margin: 1em 0px; word-wrap: break-word;">※エディタのバージョンは「191020」で据え置き</p><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/10/20" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/10/20" href="#2019/10/20" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/10/20</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「文字列ピクチャの表示」コマンドでプレビューの画像が実際より縦横1px大きくなる場合があったのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">一部のテキスト入力コントロールの文字数上限を引き上げ</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「マップの書き換え」コマンドでオートタイルを無効にしたときの下層タイル範囲書き換えが上層として処理されていたのを修正</li></ul>
+</li></ul><h6 id="エディタ・ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ・ゲームエンジン" href="#エディタ・ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ・ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「文字列ピクチャの表示」コマンドで外字のドットがずれていたのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">「条件分岐」コマンドに「ウィンドウがアクティブ」の項目を追加</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの消去」コマンドに「変数番変数/変数範囲/全て」の項目を追加</li><li style="display: list-item; line-height: 1.4em;">「ピクチャのID変更」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「ゲームのオプション設定」コマンドを追加</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/10/07" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/10/07" href="#2019/10/07" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/10/07</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更
+  マップイベント/データベース/動作指定フォームのキャンセルボタンの状態を変更するオプションを追加
+  一部の数値入力フォームの上下限を変更
+  一部のテキスト入力コントロールの文字数上限を引き上げ</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正
+  1フレームに実行可能なコマンド数が表記と異なっていたのを修正
+  「キー入力の処理EX」コマンドでジョイパッドの割り当て時にボタンの対応が表記と異なっていたのを修正
+  「マップの書き換え」コマンドで単体指定時の座標がずれていたのを修正</li></ul><h6 id="エディタ・ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ・ゲームエンジン" href="#エディタ・ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ・ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正
+  「文字列ピクチャの表示」コマンドで12px未満のフォントサイズをグラデありで描画すると色がずれていたのを修正</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/09/20" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/09/20" href="#2019/09/20" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/09/20</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「マップの書き換え」コマンドでサンプルのIDが2箇所間違っていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「マップの書き換え」コマンドを編集するときHの値の種類がWのものと同じに変わっていたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">単一CPUで動作させるオプションを追加</li><li style="display: list-item; line-height: 1.4em;">ヘルプメニューに拡張パッチのバージョンを表示</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「キー入力の処理EX」コマンドでジョイパッドが無効なときに状態を取得すると変数の値が更新されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">「マップの書き換え」コマンドで範囲指定の適用順が矩形の右下から左上になっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「画面の消去/表示」コマンドでモザイクが無効になっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「ムービーの再生」コマンド使用後にoggが再生されなくなっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「乗り物の位置を設定」コマンドでいずれかの乗り物搭乗時にプレイヤーごと別マップへ移動するとエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">ピクチャの角度指定でマイナスの値が逆方向に回転していなかったのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">仮修正<ul>
+<li style="display: list-item; line-height: 1.4em;">ピクチャの回転/角度指定で偶数サイズの画像がずれて表示されていたのを仮修正</li></ul>
+</li></ul><h6 id="エディタ&amp;ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ&amp;ゲームエンジン" href="#エディタ&amp;ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ&amp;ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドのオペランドに拡張パッチのバージョンを追加</li><li style="display: list-item; line-height: 1.4em;">「条件分岐」コマンドにジョイパッドの有無判定を追加</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/09/04" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/09/04" href="#2019/09/04" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/09/04</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">マップサイズの縦横いずれかが通常の下限値(20x15)を下回るとき自動生成機能を外すように変更</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「変数配列の操作」コマンドで特定条件でエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「繰り返し処理」コマンドが並列処理で使用されているときなどにセーブをおこなうとまれにエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「文字列ピクチャの表示」コマンドで色調を変更した場合に適用が1フレーム遅れていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「職業の変更」コマンドを実行すると防御力と精神力の値が低下していたのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">oggファイルの再生時に高負荷などを原因とした空回りが発生しないように変更</li><li style="display: list-item; line-height: 1.4em;">セーブ時にエラーが発生した場合にファイルへの書き込みをしないように変更</li><li style="display: list-item; line-height: 1.4em;">フォントの自動読み込みでオープンタイプ(.otf)のフォントに対応</li><li style="display: list-item; line-height: 1.4em;">「無効な主人公が指定されました」等のメッセージにIDや番号を付加</li><li style="display: list-item; line-height: 1.4em;">画面に表示可能な色数をハイカラー(65536色)からトゥルーカラー(16777216色)に変更</li><li style="display: list-item; line-height: 1.4em;">処理全般の高速化</li></ul>
+</li></ul><h6 id="エディタ&amp;ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ&amp;ゲームエンジン" href="#エディタ&amp;ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ&amp;ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">「キー入力の処理EX」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「マップの書き換え」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「共有セーブの操作」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドのオペランドに三項演算を追加</li><li style="display: list-item; line-height: 1.4em;">使用可能なフォントの種類を日本語版・英語版で共通になるように変更</li><li style="display: list-item; line-height: 1.4em;">データベースの状態で1番目のデータも編集できるように変更</li><li style="display: list-item; line-height: 1.4em;">データベースの状態に「対象の行動のみターンに数える」オプションを追加</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/06/30" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/06/30" href="#2019/06/30" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/06/30</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">日本語版の「イベントの呼び出し」コマンドで「このイベント」が’This Event’のままだったのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">コマンドビューのフォント変更機能を追加</li><li style="display: list-item; line-height: 1.4em;">「繰り返し処理」コマンドでインデックスを受け取る変数を表示するように変更</li><li style="display: list-item; line-height: 1.4em;">マップサイズの下限を1*1に変更</li><li style="display: list-item; line-height: 1.4em;">「プロジェクトを開く」のフォームサイズを変更</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">並列処理されるコモンイベントで「ウェイト」コマンドでの指定時間2.0秒を超えるとき正しく設定されていなかったのを修正</li></ul>
+</li></ul><h6 id="エディタ&amp;ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ&amp;ゲームエンジン" href="#エディタ&amp;ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ&amp;ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">「文字列ピクチャの表示」コマンドでフォントサイズが極端に小さいまたは画像サイズが極端に大きい場合にエラーが出ていたのを修正</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/06/25" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/06/25" href="#2019/06/25" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/06/25</h3><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「オプション画面の呼び出し」コマンド経由で画面サイズを変更した際にマウス座標の倍率が再計算されていなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">「戦闘処理の制御」コマンドでターゲティングの引数の値が間違っていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「戦闘処理の制御」コマンドで呼び出されるイベント実行時に余計なフレーム経過がはさまれていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「ピクチャ移動」コマンドで、スクロールに連動したピクチャを移動させたときの座標が正しくなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドで、変数番のスイッチで取得できる値が正しくなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">デフォ戦で通常攻撃の対象が全体または味方側であった場合にエラーが出る問題を修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「ピクチャ表示」コマンドで引数が足りないときの消去条件および適用画面効果のデフォルトを変更（マップ移動で消去・フラッシュとシェイクの影響を受ける）</li><li style="display: list-item; line-height: 1.4em;">「変数の操作」コマンドのパフォーマンス改善</li><li style="display: list-item; line-height: 1.4em;">「条件分岐」コマンド等のブロックがスキップされる処理を軽量化</li><li style="display: list-item; line-height: 1.4em;">マップイベントの呼び出しを高速化</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/05/26" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/05/26" href="#2019/05/26" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/05/26</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">コマンドリストの編集機能を追加</li><li style="display: list-item; line-height: 1.4em;">「キャラクターの動作指定」コマンドでグラフィック変更の際、向きやパターンごとの画像を確認できるように変更</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">コモンイベントの並列処理イベントの実行速度を改善</li><li style="display: list-item; line-height: 1.4em;">1コマンドあたりの実行コストを低減</li><li style="display: list-item; line-height: 1.4em;">ピクチャの回転描画の挙動を大幅改善</li><li style="display: list-item; line-height: 1.4em;">pf版のみイベントごとのフレーム内実行コマンド数上限を1万から20万に変更</li><li style="display: list-item; line-height: 1.4em;">フォントの読み込み機能を追加</li></ul>
+</li></ul><h6 id="エディタ&amp;ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ&amp;ゲームエンジン" href="#エディタ&amp;ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ&amp;ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「accord.dll」がGoogle ドライブでウィルス判定を受ける問題を修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">「戦闘情報の取得」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「変数配列の操作」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">ピクチャの特殊効果に角度指定を追加</li><li style="display: list-item; line-height: 1.4em;">ピクチャの特殊効果とブレンドモードを分離（現時点では波形のみ併用不可）</li><li style="display: list-item; line-height: 1.4em;">「戦闘処理の制御」コマンドに項目「状態付与」「HP以外の能力値変動」を追加</li><li style="display: list-item; line-height: 1.4em;">「戦闘コマンドの変更EX」コマンドにパーティコマンド操作機能を追加</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/02/20" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/02/20" href="#2019/02/20" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/02/20</h3><h6 id="ゲームエンジン：" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン：" href="#ゲームエンジン：" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン：</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">デフォ戦で戦闘タイプがBのとき、コマンド選択が正しく動作していなかったのを修正</li><li style="display: list-item; line-height: 1.4em;">デフォ戦で逃げられない設定の戦闘時に使用可能コマンドと不能なものの文字色が反転していたのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">デフォ戦で全ての戦闘コマンドを外したときの挙動を変更</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/02/17" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/02/17" href="#2019/02/17" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/02/17</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">修正</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">条件分岐のフォームで一部コントロールが重なっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「ピクチャの移動」コマンドフォームで画像反転を表すテキストが表示されていなかったのを修正</li></ul>
+</li><li style="display: list-item; line-height: 1.4em;"><p style="margin: 1em 0px; word-wrap: break-word;">追加変更</p>
+<ul>
+<li style="display: list-item; line-height: 1.4em;">メインメニューに「バックアップ」を追加</li><li style="display: list-item; line-height: 1.4em;">条件分岐のフォームで左辺値「変数番のスイッチ」「変数番の変数」の並びを変更</li><li style="display: list-item; line-height: 1.4em;">コモンイベントとバトルイベントで異なるコマンドをペーストしたときの警告を非表示に変更</li><li style="display: list-item; line-height: 1.4em;">コモンイベントとバトルイベントで異なるコマンドを編集できるように変更</li><li style="display: list-item; line-height: 1.4em;">コモンイベントとバトルイベントで異なるコマンドリストを呼び出せるように変更</li><li style="display: list-item; line-height: 1.4em;">プログラムでエラーが発生したときにデータベースとマップデータの保存を中止するように変更</li><li style="display: list-item; line-height: 1.4em;">「特定環境で戦闘テストの起動に失敗する問題を修正するパッチ」の内容を内包<br style="clear: both;">
+(<a href="https://rpgmaker.net/forums/topics/21525/?post=875459#post875459" target="_blank" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);">https://rpgmaker.net/forums/topics/21525/?post=875459#post875459</a>)</li></ul>
+</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">修正<ul>
+<li style="display: list-item; line-height: 1.4em;">変数操作のオペランドSin/Cosで、引数に0を指定したときエラーがでていたのを修正</li><li style="display: list-item; line-height: 1.4em;">「文字列ピクチャの表示」コマンドで影を有効にした上でサイズを自動算出すると縦横1pxずつ余分に大きかったのを修正</li></ul>
+</li></ul><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">デフォ戦のダメージ上限を変数値の上限と同等に変更</li><li style="display: list-item; line-height: 1.4em;">精神/敏捷ステータスに倍増と半減の効果を重ねがけできるように変更</li></ul>
+</li></ul><h6 id="エディタ&amp;ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ&amp;ゲームエンジン" href="#エディタ&amp;ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ&amp;ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">追加変更<ul>
+<li style="display: list-item; line-height: 1.4em;">「ピクチャ情報の取得」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「戦闘処理の制御」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「ATBゲージの操作」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「戦闘コマンドの変更EX」コマンドを追加</li><li style="display: list-item; line-height: 1.4em;">「戦闘の処理」コマンドで戦闘開始前のフラッシュを無効化するオプションを追加</li><li style="display: list-item; line-height: 1.4em;">「変数操作」コマンドのオペランドSin/Cosに引数を1つ追加</li><li style="display: list-item; line-height: 1.4em;">敵キャラデータの項目に攻撃時の戦闘アニメを追加</li><li style="display: list-item; line-height: 1.4em;">コモンイベントの開始条件に「戦闘開始」を追加</li><li style="display: list-item; line-height: 1.4em;">コモンイベントの開始条件に「戦闘時に並列処理」を追加</li></ul>
+</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/01/22" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/01/22" href="#2019/01/22" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/01/22</h3><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">生成した文字列ピクチャに対しピクチャの移動をおこなった後にセーブすると</li><li style="display: list-item; line-height: 1.4em;">ロード時にエラーが出ていたのを修正</li><li style="display: list-item; line-height: 1.4em;">(上記の条件に当てはまる190121版以前の文字列ピクチャはロード時に文字の描画をスキップするように変更、</li><li style="display: list-item; line-height: 1.4em;">190122以降で作成されたセーブデータは正常にセーブ/ロード可能)</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/01/21" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/01/21" href="#2019/01/21" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/01/21</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">文字列ピクチャで一覧表示による変数選択ができなくなっていたのを修正</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">文字列ピクチャで特殊文字の描画がスキップされることがあったのを修正</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/01/20" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/01/20" href="#2019/01/20" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/01/20</h3><h6 id="エディタ(日本語版)" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ(日本語版)" href="#エディタ(日本語版)" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ(日本語版)</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">職業の変更コマンドの翻訳漏れを補完</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">条件分岐「セーブデータが存在する」で正しく判定されていなかったのを修正</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/01/19" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/01/19" href="#2019/01/19" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/01/19</h3><h6 id="エディタ：" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ：" href="#エディタ：" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ：</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">文字列ピクチャのプレビュー更新にショートカットキーを追加</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">終了時にエラーが出ていたのを修正</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2019/01/19" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2019/01/19" href="#2019/01/19" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2019/01/19</h3><h6 id="エディタ" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="エディタ" href="#エディタ" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>エディタ</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">変数操作のフォームで定数範囲指定の上限が9999になっていたのを修正(→999999)</li><li style="display: list-item; line-height: 1.4em;">条件分岐で「n番の変数が<em>*</em>」を選択していると、編集操作を行っても新規作成と同様の値が設定されてしまう問題を修正</li></ul><h6 id="ゲームエンジン" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="ゲームエンジン" href="#ゲームエンジン" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>ゲームエンジン</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">変数操作で主人公の現在経験値を取得しようとすると現在レベルが返っていたのを修正</li></ul><h6 id="共通" style="clear: both;font-size: 1em; font-weight: bold; margin: 0.75em 0px 0.5em;color: rgb(119, 119, 119);"><a name="共通" href="#共通" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>共通</h6><ul>
+<li style="display: list-item; line-height: 1.4em;">セキュリティソフトによる誤検知対策に追加セクションの配置を変更</li><li style="display: list-item; line-height: 1.4em;">文字列ピクチャの表示コマンドを追加</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2018/12/09" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2018/12/09" href="#2018/12/09" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2018/12/09</h3><ul>
+<li style="display: list-item; line-height: 1.4em;">ピクチャの波形描画が無効になっていたのを修正</li><li style="display: list-item; line-height: 1.4em;">マップイベント更新のタイミングを変更しないバージョンを追加</li><li style="display: list-item; line-height: 1.4em;">コモンイベントの呼び出しを高速化</li><li style="display: list-item; line-height: 1.4em;">OSの言語設定が日本語以外の状態で日本語版を使用したとき文字化けするのを修正</li><li style="display: list-item; line-height: 1.4em;">変数の操作、条件分岐、イベントの呼び出し、繰り返し処理、繰り返し処理の中断コマンドそれぞれの機能を追加修正</li></ul><hr style="border-top-style: dashed !important;border: 1px solid rgb(204, 204, 204);border: 1px solid rgb(230, 230, 230);"><h3 id="2018/08/09" style="clear: both;font-size: 1.6em; font-weight: bold; margin: 1.125em 0px 0.75em;"><a name="2018/08/09" href="#2018/08/09" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>2018/08/09</h3><ul>
+<li style="display: list-item; line-height: 1.4em;">動作テスト版公開</li></ul></div>
+
+
+//}
 
 :
 作者
-氷山羊
-mail: bingshanyang at gmail dot com
-twitter: &[@BingShan1024,https://twitter.com/BingShan1024]
+//{
+<div><h2 id="作者" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="作者" href="#作者" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>作者</h2><p style="margin-top: 0px;margin: 1em 0px; word-wrap: break-word;">氷山羊</p><p style="margin: 1em 0px; word-wrap: break-word;">Mail: bingshanyang at gmail dot com<br style="clear: both;">
+Twitter(X): @BingShan1024<br style="clear: both;">
+Misskey.io: @BingShan1024<br style="clear: both;">
+Blue Sky: @bingshan1024.bsky.social</p></div>
+//}
 
 :
 リンク
-&[Steam版 RPG Maker 2003 のストアページ,http://store.steampowered.com/app/362870/RPG_Maker_2003/]
-&[RPG Maker 2003 - Patch EULA (Steam),http://steamcommunity.com/app/362870/discussions/0/541906348059148217/]
-&[RPG Maker Web,http://www.rpgmakerweb.com/]
-&[英語版2003 RTP (RPG Maker Web),http://www.rpgmakerweb.com/download/additional/run-time-packages]
-&[VIPRPG@総合制作技術Wiki,https://wikiwiki.jp/viprpg-dev/]
+//{
+<div><h2 id="リンク" style="clear: both;font-size: 1.8em; font-weight: bold; margin: 1.275em 0px 0.85em;margin-top: 0px;border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgb(230, 230, 230);"><a name="リンク" href="#リンク" style="text-decoration: none; vertical-align: baseline;color: rgb(50, 105, 160);"></a>リンク</h2><table style="padding: 0px; border-collapse: collapse; border-spacing: 0px; margin-bottom: 16px;background-color: rgb(250, 250, 250);">
+<thead>
+<tr>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">名前</th>
+<th style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;font-weight: bold;border: 1px solid rgb(230, 230, 230);">備考</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);"><a href="http://store.steampowered.com/app/362870/RPG_Maker_2003/" target="_blank" style="text-decoration: none; vertical-align: baseline;margin-top: 0px;margin-bottom: 0px;color: rgb(50, 105, 160);">RPG Maker 2003 ストアページ (Steam)</a></td>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">セールのときは90%オフの230円 ※2024年10月現在</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);"><a href="http://steamcommunity.com/app/362870/discussions/0/541906348059148217/" target="_blank" style="text-decoration: none; vertical-align: baseline;margin-top: 0px;margin-bottom: 0px;color: rgb(50, 105, 160);">RPG Maker 2003 - Patch EULA (Steam)</a></td>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">パッチの作成・利用ともに同意が必要</td>
+</tr>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);"><a href="http://www.rpgmakerweb.com/" target="_blank" style="text-decoration: none; vertical-align: baseline;margin-top: 0px;margin-bottom: 0px;color: rgb(50, 105, 160);">RPG Maker Web</a></td>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">海外公式</td>
+</tr>
+<tr style="background-color: rgb(242, 242, 242);">
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);"><a href="http://www.rpgmakerweb.com/download/additional/run-time-packages" target="_blank" style="text-decoration: none; vertical-align: baseline;margin-top: 0px;margin-bottom: 0px;color: rgb(50, 105, 160);">英語版2003 RTP (RPG Maker Web)</a></td>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">RPG Maker 2003購入時に同梱されているためプレイヤー用</td>
+</tr>
+<tr>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);"><a href="https://wikiwiki.jp/viprpg-dev/" target="_blank" style="text-decoration: none; vertical-align: baseline;margin-top: 0px;margin-bottom: 0px;color: rgb(50, 105, 160);">VIPRPG@総合制作技術Wiki</a></td>
+<td style="text-align:left; border: 1px solid rgb(204, 204, 204); margin: 0px; padding: 6px 13px;border: 1px solid rgb(230, 230, 230);">パッチの当て方や活用方法など</td>
+</tr>
+</tbody>
+</table></div>
+//}
 
 
-`).parse();
 
+
+
+`).parse();    
+    
     myMenuToFlatArray(arr, myDict);
-
-
-    var items = arr.map(x => myCreateMenuItem(x));
+    
+    
+    var items = arr.map(x => myCreateMenuItem(x));    
     var menu = new MyPanel(myMenuId, items);
     var view = new MyPanel(myViewId, []);
-
+    
     document.body.innerHTML = `${menu.tos()}${view.tos()}`;
     window.onresize = myResize;
-
-
+    
+    
     [myMenu(), myView()].forEach(x => {
         x.style.border = 'thin solid gray';
         x.style.float = 'left';
-        x.style.display = 'inline-block';
+        x.style.display = 'inline-block';        
         x.style['white-space'] = 'nowrap';
         x.style.overflow = 'scroll';
     });
-
-
+    
+    
     myResize();
     myJump(0);
-
+    
 };
 
 const myJump = (id) => {
-    myView().innerHTML = myMoldDesc(myDict[id]);
+    const e = myDict[id];
+    
+//    alert(e);
+    
+ //   myView().innerHTML = myMoldDesc(myDict[id]); 
+    myView().innerHTML = e.indexOf('</div>') >= 0 ? e : myMoldDesc(e); 
     myView().scrollTop = 0;
     myView().scrollLeft = 0;
 }
